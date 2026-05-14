@@ -1,10 +1,11 @@
 import SwiftUI
 
 @main
-struct iOSApp: App {
+struct SahmFoodPOSiOSApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ComposeView()
+                .ignoresSafeArea(.keyboard)
         }
     }
 }

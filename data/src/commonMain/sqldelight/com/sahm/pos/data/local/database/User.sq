@@ -12,6 +12,9 @@ selectAll:
 SELECT *
 FROM users;
 
+hasUsers:
+SELECT EXISTS(SELECT 1 FROM users LIMIT 1);
+
 selectById:
 SELECT *
 FROM users
@@ -33,6 +36,11 @@ INSERT OR REPLACE INTO users(
     last_login_at
 )
 VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateLastLoginAt:
+UPDATE users
+SET last_login_at = ?
+WHERE id = ?;
 
 deleteAll:
 DELETE FROM users;

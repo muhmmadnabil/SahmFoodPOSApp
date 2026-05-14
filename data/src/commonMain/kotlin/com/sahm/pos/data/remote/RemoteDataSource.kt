@@ -3,7 +3,7 @@ package com.sahm.pos.data.remote
 import com.sahm.pos.domain.entity.User
 
 interface RemoteDataSource {
-    suspend fun createUser(user: User)
+    suspend fun getUsers(): List<User>
 }
 
 expect fun createRemoteDataSource(): RemoteDataSource

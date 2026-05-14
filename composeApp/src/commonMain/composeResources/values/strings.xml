@@ -1,0 +1,21 @@
+<resources>
+    <string name="login_title">Cashier Login</string>
+    <string name="login_subtitle">Sign in to continue</string>
+    <string name="login_phone_label">Phone Number</string>
+    <string name="login_phone_placeholder">Enter phone number</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_password_placeholder">Enter password</string>
+    <string name="login_remember_device">Remember this device</string>
+    <string name="login_button">Login</string>
+    <string name="login_loading">Logging in</string>
+    <string name="login_password_show">Show</string>
+    <string name="login_password_hide">Hide</string>
+    <string name="login_toggle_password_visibility">Toggle password visibility</string>
+    <string name="login_pos_placeholder">POS</string>
+    <string name="login_error_phone_required">Phone number is required</string>
+    <string name="login_error_phone_invalid">Phone number must be 12 digits and start with 02</string>
+    <string name="login_error_password_required">Password is required</string>
+    <string name="login_error_password_too_short">Password must be more than 6 digits</string>
+    <string name="login_error_invalid_credentials">Phone or password is wrong</string>
+    <string name="login_error_generic">Something went wrong. Please try again.</string>
+</resources>
