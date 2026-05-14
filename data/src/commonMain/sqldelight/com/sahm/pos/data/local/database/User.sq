@@ -1,0 +1,38 @@
+CREATE TABLE users (
+    id TEXT NOT NULL PRIMARY KEY,
+    username TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    is_active INTEGER NOT NULL,
+    last_login_at TEXT NOT NULL
+);
+
+selectAll:
+SELECT *
+FROM users;
+
+selectById:
+SELECT *
+FROM users
+WHERE id = ?;
+
+selectByPhone:
+SELECT *
+FROM users
+WHERE phone = ?;
+
+upsert:
+INSERT OR REPLACE INTO users(
+    id,
+    username,
+    phone,
+    password,
+    created_at,
+    is_active,
+    last_login_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteAll:
+DELETE FROM users;

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "890078933459",
+    "project_id": "sahm-pos-1eb1f",
+    "storage_bucket": "sahm-pos-1eb1f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890078933459:android:4e60da4619b388e39cbf26",
+        "android_client_info": {
+          "package_name": "com.sahm.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCw6t22aeQZYuIsqoIsbMz7fTaYhq1e1e8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
