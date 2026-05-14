@@ -11,7 +11,7 @@ internal const val CURRENT_USER_PREFS_FILE = "current_user.preferences_pb"
 
 internal class DataStorePref(
     private val dataStore: DataStore<Preferences>,
-) : CurrentUserLocalDataSource {
+) : DataStoreLocalDataSource {
 
     override suspend fun saveCurrentUser(currentUser: CurrentUser) {
         dataStore.edit { preferences ->

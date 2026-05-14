@@ -1,9 +1,9 @@
 package com.sahm.pos.domain.usecase
 
-import com.sahm.pos.domain.repository.AuthRepo
+import com.sahm.pos.domain.repository.SyncDataRepo
 
 class HasUsersUseCase(
-    private val authRepo: AuthRepo,
+    private val syncRepo: SyncDataRepo,
 ) {
-    suspend operator fun invoke(): Boolean = authRepo.hasUsers()
+    suspend operator fun invoke(): Boolean = syncRepo.hasUsers()
 }
