@@ -16,7 +16,7 @@ import com.sahm.pos.utils.ScreenType
 fun PhoneLoginContent(
     state: LoginUiState,
     screenType: ScreenType,
-    onIntent: (LoginIntent) -> Unit,
+    onIntent: (LoginIntent) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -25,12 +25,16 @@ fun PhoneLoginContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(40.dp, alignment = Alignment.CenterVertically)
     ) {
-        LoginHeader(screenType)
+        LoginHeader(screenType = screenType)
 
         LoginCard(
             state = state,
             screenType = screenType,
             onIntent = onIntent,
+        )
+
+        SyncDataButton(
+            onClick = { onIntent(LoginIntent.SyncClicked) },
         )
     }
 }

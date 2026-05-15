@@ -233,7 +233,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun givenValidCredentials_whenUseCaseSuccess_thenNavigateToPosEffectIsEmitted() = runTest {
+    fun givenValidCredentials_whenUseCaseSuccess_thenNavigateToHomeEffectIsEmitted() = runTest {
         val effects = mutableListOf<LoginEffect>()
         val viewModel = viewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -245,7 +245,7 @@ class LoginViewModelTest {
         viewModel.onIntent(LoginIntent.SubmitLogin)
         advanceUntilIdle()
 
-        assertTrue(effects.any { it == LoginEffect.NavigateToPos })
+        assertTrue(effects.any { it == LoginEffect.NavigateToHome })
     }
 
     @Test
@@ -297,7 +297,7 @@ class LoginViewModelTest {
         viewModel.onIntent(LoginIntent.SubmitLogin)
         advanceUntilIdle()
 
-        assertFalse(effects.any { it == LoginEffect.NavigateToPos })
+        assertFalse(effects.any { it == LoginEffect.NavigateToHome })
     }
 
     @Test
@@ -341,10 +341,6 @@ class LoginViewModelTest {
     ) : AuthRepo {
         var getCashierCalls = 0
 
-        override suspend fun hasUsers(): Boolean = true
-
-        override suspend fun syncUsers() = Unit
-
         override suspend fun getUserByPhone(phone: String): User? {
             getCashierCalls += 1
             waitForLookup?.await()
@@ -370,6 +366,7 @@ class LoginViewModelTest {
             isActive = true,
             lastLoginAt = "",
             password = validPassword,
+            lastSyncAt = 1000,
         )
     }
 }

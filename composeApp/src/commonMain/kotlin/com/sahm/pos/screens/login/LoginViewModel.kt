@@ -37,6 +37,13 @@ class LoginViewModel(
             is LoginIntent.PasswordChanged -> onPasswordChanged(intent.password)
             LoginIntent.TogglePasswordVisibility -> togglePasswordVisibility()
             LoginIntent.SubmitLogin -> submitLogin()
+            LoginIntent.SyncClicked -> onSyncClicked()
+        }
+    }
+
+    private fun onSyncClicked() {
+        viewModelScope.launch {
+            _effect.emit(LoginEffect.NavigateToSync)
         }
     }
 
@@ -118,7 +125,7 @@ class LoginViewModel(
                             generalError = null,
                         )
                     }
-                    _effect.emit(LoginEffect.NavigateToPos)
+                    _effect.emit(LoginEffect.NavigateToHome)
                 }
             }
         }
@@ -165,8 +172,8 @@ private fun String.toNormalizedPhoneOrNull(): String? = buildString {
 
 private fun String.isValidPhone(): Boolean =
     length == PhoneLength &&
-        startsWith(PhonePrefix) &&
-        all { it.isLatinDigit() }
+            startsWith(PhonePrefix) &&
+            all { it.isLatinDigit() }
 
 private fun Char.isLatinDigit(): Boolean = this in '0'..'9'
 
