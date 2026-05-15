@@ -70,7 +70,7 @@ fun AppNavHost(
         }
 
         composable(AppRoute.Home) {
-            HomeScreen()
+            HomeScreen(screenType = screenType)
         }
     }
 }
