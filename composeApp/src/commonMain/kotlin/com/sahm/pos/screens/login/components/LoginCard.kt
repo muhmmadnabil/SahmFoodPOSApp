@@ -66,7 +66,10 @@ fun LoginCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(
+                    horizontal = if (screenType == ScreenType.Tablet) 30.dp else 20.dp,
+                    vertical = if (screenType == ScreenType.Tablet) 40.dp else 20.dp
+                ),
         ) {
             PrimaryTextField(
                 label = stringResource(Res.string.login_phone_label),

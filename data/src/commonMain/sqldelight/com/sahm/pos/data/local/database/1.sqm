@@ -1,0 +1,11 @@
+CREATE TABLE menu_items (
+    id TEXT NOT NULL PRIMARY KEY,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    local_image_url TEXT,
+    price INTEGER NOT NULL,
+    last_synced_at INTEGER,
+    is_active INTEGER NOT NULL
+);

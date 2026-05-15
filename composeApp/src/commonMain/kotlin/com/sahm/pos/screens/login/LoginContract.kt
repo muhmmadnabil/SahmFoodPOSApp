@@ -17,9 +17,11 @@ sealed interface LoginIntent {
     data class PasswordChanged(val password: String) : LoginIntent
     data object TogglePasswordVisibility : LoginIntent
     data object SubmitLogin : LoginIntent
+    data object SyncClicked : LoginIntent
 }
 
 sealed interface LoginEffect {
-    data object NavigateToPos : LoginEffect
+    data object NavigateToHome : LoginEffect
+    data object NavigateToSync : LoginEffect
     data class ShowMessage(val message: StringResource) : LoginEffect
 }

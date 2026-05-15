@@ -11,3 +11,7 @@ val BorderDefault = Color(0xFFE5E7EB)
 val ErrorRed = Color(0xFFEF4444)
 val ShadowColor = Color(0x1A000000)
 val Black = Color(0xFF000000)
+
+val SuccessGreen = Color(0xFF22C55E)
+val SuccessBackground = Color(0xFFE9FAF1)
+val SyncIconBackground = Color(0xFFFFF0E8)
