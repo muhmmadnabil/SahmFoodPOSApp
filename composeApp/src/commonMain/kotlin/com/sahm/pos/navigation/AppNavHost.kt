@@ -2,41 +2,34 @@ package com.sahm.pos.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.sahm.pos.domain.usecase.HasCurrentUserUseCase
+import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeScreen
+import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginEffect
 import com.sahm.pos.screens.login.LoginScreen
 import com.sahm.pos.screens.login.LoginViewModel
+import com.sahm.pos.screens.sync.SyncDetailType
+import com.sahm.pos.screens.sync.SyncScreen
+import com.sahm.pos.screens.syncDetails.SyncDetailsScreen
+import com.sahm.pos.screens.syncDetails.SyncEffect
+import com.sahm.pos.screens.syncDetails.SyncIntent
+import com.sahm.pos.screens.syncDetails.SyncViewModel
 import com.sahm.pos.utils.ScreenType
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun AppNavHost(
+    navController: NavHostController,
     screenType: ScreenType,
+    startDestination: String,
     modifier: Modifier = Modifier,
-    hasCurrentUserUseCase: HasCurrentUserUseCase = koinInject(),
 ) {
-    val navController = rememberNavController()
-    val hasCurrentUser by produceState<Boolean?>(
-        initialValue = null,
-        key1 = hasCurrentUserUseCase,
-    ) {
-        value = hasCurrentUserUseCase()
-    }
-    val startDestination = when (hasCurrentUser) {
-        true -> AppRoute.Home
-        false -> AppRoute.Login
-        null -> return
-    }
-
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -49,7 +42,7 @@ fun AppNavHost(
             LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
-                        LoginEffect.NavigateToPos -> {
+                        LoginEffect.NavigateToHome -> {
                             navController.navigate(AppRoute.Home) {
                                 popUpTo(AppRoute.Login) { inclusive = true }
                             }
@@ -58,6 +51,10 @@ fun AppNavHost(
                         is LoginEffect.ShowMessage -> {
 
                         }
+
+                        LoginEffect.NavigateToSync -> {
+                            navController.navigate(AppRoute.Sync)
+                        }
                     }
                 }
             }
@@ -65,12 +62,73 @@ fun AppNavHost(
             LoginScreen(
                 state = state,
                 screenType = screenType,
-                onIntent = viewModel::onIntent,
+                onIntent = viewModel::onIntent
             )
         }
 
         composable(AppRoute.Home) {
-            HomeScreen()
+            val viewModel = koinViewModel<HomeViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(HomeIntent.ScreenOpened)
+            }
+
+            HomeScreen(state = state)
+        }
+
+        composable(AppRoute.Sync) {
+            SyncScreen(
+                screenType = screenType,
+                onUsersClick = { navController.navigate(AppRoute.SyncUsers) },
+                onItemsClick = { navController.navigate(AppRoute.SyncItems) },
+            )
+        }
+
+        composable(AppRoute.SyncUsers) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened)
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Users,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncItems) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened)
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Items,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
         }
     }
 }

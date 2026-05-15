@@ -35,10 +35,6 @@ class HasCurrentUserUseCaseTest {
         private val currentUser: CurrentUser? = null,
         private val throwOnCurrentUser: Boolean = false,
     ) : AuthRepo {
-        override suspend fun hasUsers(): Boolean = true
-
-        override suspend fun syncUsers() = Unit
-
         override suspend fun getUserByPhone(phone: String): User? = null
 
         override suspend fun saveCurrentUser(currentUser: CurrentUser) = Unit

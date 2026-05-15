@@ -19,7 +19,7 @@ import com.sahm.pos.utils.ScreenType
 fun LoginScreen(
     state: LoginUiState,
     screenType: ScreenType,
-    onIntent: (LoginIntent) -> Unit,
+    onIntent: (LoginIntent) -> Unit
 ) {
     Box(
         modifier = Modifier

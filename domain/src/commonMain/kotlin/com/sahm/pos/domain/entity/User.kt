@@ -8,4 +8,5 @@ data class User(
     val isActive: Boolean,
     val lastLoginAt: String,
     val password: String,
+    val lastSyncAt: Long
 )
