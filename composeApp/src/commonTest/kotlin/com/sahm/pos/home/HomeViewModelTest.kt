@@ -1,6 +1,7 @@
 package com.sahm.pos.home
 
 import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.domain.entity.PaymentType
@@ -173,7 +174,11 @@ class HomeViewModelTest {
 
         override suspend fun syncMenuItems(): SyncResult = SyncResult.Success(0, 0)
 
+        override suspend fun syncDiscounts(): SyncResult = SyncResult.Success(0, 0)
+
         override suspend fun getActiveMenuItems(): List<MenuItem> = activeItems
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
 
         override suspend fun getUserCount(): Long = 0
 

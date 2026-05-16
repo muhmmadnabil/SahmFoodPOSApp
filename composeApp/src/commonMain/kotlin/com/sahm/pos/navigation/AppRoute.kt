@@ -6,4 +6,5 @@ object AppRoute {
     const val Sync = "SYNC"
     const val SyncUsers = "SYNC_USERS"
     const val SyncItems = "SYNC_ITEMS"
+    const val SyncDiscounts = "SYNC_DISCOUNTS"
 }

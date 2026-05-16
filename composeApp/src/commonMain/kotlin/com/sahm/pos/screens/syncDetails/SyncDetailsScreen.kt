@@ -23,10 +23,13 @@ import sahmfoodposapp.composeapp.generated.resources.sync_details_title
 import sahmfoodposapp.composeapp.generated.resources.sync_failed
 import sahmfoodposapp.composeapp.generated.resources.sync_last_sync
 import sahmfoodposapp.composeapp.generated.resources.sync_never_synced
+import sahmfoodposapp.composeapp.generated.resources.sync_new_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_new_items
 import sahmfoodposapp.composeapp.generated.resources.sync_new_users
+import sahmfoodposapp.composeapp.generated.resources.sync_total_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_total_items
 import sahmfoodposapp.composeapp.generated.resources.sync_total_users
+import sahmfoodposapp.composeapp.generated.resources.sync_updated_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_items
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_users
 
@@ -37,28 +40,30 @@ fun SyncDetailsScreen(
     state: SyncUiState = SyncUiState(),
     onIntent: (SyncIntent) -> Unit = {},
 ) {
-    val isSyncing = when (type) {
-        SyncDetailType.Users -> state.isSyncingUsers
-        SyncDetailType.Items -> state.isSyncingItems
-    }
     val rows = when (type) {
         SyncDetailType.Users -> listOf(
-            SyncDetailRow(Res.string.sync_total_users, state.localUserCount.toString()),
-            SyncDetailRow(Res.string.sync_new_users, state.lastUsersSyncedCount.toString()),
+            SyncDetailRow(Res.string.sync_total_users, state.count.toString()),
+            SyncDetailRow(Res.string.sync_new_users, state.lastSyncedCount.toString()),
             SyncDetailRow(Res.string.sync_updated_users, "0"),
-            SyncDetailRow(Res.string.sync_failed, state.skippedInvalidUsersCount.toString()),
+            SyncDetailRow(Res.string.sync_failed, state.skippedCount.toString()),
         )
+
         SyncDetailType.Items -> listOf(
-            SyncDetailRow(Res.string.sync_total_items, state.localItemCount.toString()),
-            SyncDetailRow(Res.string.sync_new_items, state.lastItemsSyncedCount.toString()),
+            SyncDetailRow(Res.string.sync_total_items, state.count.toString()),
+            SyncDetailRow(Res.string.sync_new_items, state.lastSyncedCount.toString()),
             SyncDetailRow(Res.string.sync_updated_items, "0"),
-            SyncDetailRow(Res.string.sync_failed, state.skippedInvalidItemsCount.toString()),
+            SyncDetailRow(Res.string.sync_failed, state.skippedCount.toString()),
+        )
+
+        SyncDetailType.Discounts -> listOf(
+            SyncDetailRow(Res.string.sync_total_discounts, state.count.toString()),
+            SyncDetailRow(Res.string.sync_new_discounts, state.lastSyncedCount.toString()),
+            SyncDetailRow(Res.string.sync_updated_discounts, "0"),
+            SyncDetailRow(Res.string.sync_failed, state.skippedCount.toString()),
         )
     }.toImmutableList()
-    val lastSyncAt = when (type) {
-        SyncDetailType.Users -> state.lastUserSyncAt
-        SyncDetailType.Items -> state.lastItemSyncAt
-    }?.toUtcDateTimeText() ?: stringResource(Res.string.sync_never_synced)
+    val lastSyncAt =
+        state.lastSyncAt?.toUtcDateTimeText() ?: stringResource(Res.string.sync_never_synced)
 
     Column(
         modifier = Modifier
@@ -68,11 +73,12 @@ fun SyncDetailsScreen(
         SyncSummaryCard(
             type = type,
             screenType = screenType,
-            isSyncing = isSyncing,
+            isSyncing = state.isSyncing,
             onStartSync = {
                 when (type) {
                     SyncDetailType.Users -> onIntent(SyncIntent.SyncUsersClicked)
                     SyncDetailType.Items -> onIntent(SyncIntent.SyncItemsClicked)
+                    SyncDetailType.Discounts -> onIntent(SyncIntent.SyncDiscountsClicked)
                 }
             },
         )

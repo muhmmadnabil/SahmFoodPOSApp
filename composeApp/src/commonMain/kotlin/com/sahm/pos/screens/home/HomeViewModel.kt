@@ -169,14 +169,16 @@ class HomeViewModel(
         val orderItemsById = orderItems.associate { it.item.id to it.quantity }
         val recalculatedOrderItems = buildOrderItems(menuItems, orderItemsById)
         val subtotal = recalculatedOrderItems.sumOf { it.lineTotal }
-        val service = calculateService(subtotal - discount, selectedOrderType)
-        val taxableAmount = subtotal - discount + service
+        val discountAmount = discountText.toMoneyInput().toMoneyCents().coerceAtMost(subtotal)
+        val service = calculateService(subtotal - discountAmount, selectedOrderType)
+        val taxableAmount = subtotal - discountAmount + service
         val tax = calculatePercent(taxableAmount, HomeConstants.TaxPercent)
 
         return copy(
             filteredMenuItems = filteredItems.toImmutableList(),
             orderItems = recalculatedOrderItems.toImmutableList(),
             subtotal = subtotal,
+            discount = discountAmount,
             service = service,
             tax = tax,
             total = taxableAmount + tax,
@@ -233,5 +235,18 @@ class HomeViewModel(
         }
 
         return builder.toString()
+    }
+
+    private fun String.toMoneyCents(): Long {
+        if (isBlank()) return 0
+        val parts = split('.', limit = 2)
+        val whole = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+        val decimal = parts.getOrNull(1)
+            .orEmpty()
+            .padEnd(2, '0')
+            .take(2)
+            .toLongOrNull()
+            ?: 0L
+        return whole * 100 + decimal
     }
 }

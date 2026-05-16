@@ -87,6 +87,7 @@ fun AppNavHost(
                 screenType = screenType,
                 onUsersClick = { navController.navigate(AppRoute.SyncUsers) },
                 onItemsClick = { navController.navigate(AppRoute.SyncItems) },
+                onDiscountsClick = { navController.navigate(AppRoute.SyncDiscounts) },
             )
         }
 
@@ -95,7 +96,10 @@ fun AppNavHost(
             val state by viewModel.state.collectAsStateWithLifecycle()
 
             LaunchedEffect(Unit) {
-                viewModel.onIntent(SyncIntent.ScreenOpened)
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Users))
+            }
+
+            LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
@@ -117,8 +121,11 @@ fun AppNavHost(
             val viewModel = koinViewModel<SyncViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
 
+            LaunchedEffect(Unit){
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Items))
+            }
+
             LaunchedEffect(Unit) {
-                viewModel.onIntent(SyncIntent.ScreenOpened)
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
@@ -131,6 +138,32 @@ fun AppNavHost(
             SyncDetailsScreen(
                 screenType = screenType,
                 type = SyncDetailType.Items,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncDiscounts) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit){
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Discounts))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Discounts,
                 state = state,
                 onIntent = viewModel::onIntent,
             )

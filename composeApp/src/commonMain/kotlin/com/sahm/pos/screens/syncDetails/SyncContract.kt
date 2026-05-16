@@ -1,24 +1,22 @@
 package com.sahm.pos.screens.syncDetails
 
+import com.sahm.pos.screens.sync.SyncDetailType
 import org.jetbrains.compose.resources.StringResource
 
 data class SyncUiState(
-    val isSyncingItems: Boolean = false,
-    val isSyncingUsers: Boolean = false,
-    val localItemCount: Int = 0,
-    val localUserCount: Int = 0,
-    val lastItemSyncAt: Long? = null,
-    val lastUserSyncAt: Long? = null,
-    val lastItemsSyncedCount: Int = 0,
-    val lastUsersSyncedCount: Int = 0,
-    val skippedInvalidItemsCount: Int = 0,
-    val skippedInvalidUsersCount: Int = 0,
+    val selectedType: SyncDetailType? = null,
+    val isSyncing: Boolean = false,
+    val lastSyncAt: Long? = null,
+    val count: Int = 0,
+    val skippedCount: Int = 0,
+    val lastSyncedCount: Int = 0,
 )
 
 sealed interface SyncIntent {
-    data object ScreenOpened : SyncIntent
+    data class ScreenOpened(val type: SyncDetailType) : SyncIntent
     data object SyncItemsClicked : SyncIntent
     data object SyncUsersClicked : SyncIntent
+    data object SyncDiscountsClicked : SyncIntent
 }
 
 sealed interface SyncEffect {

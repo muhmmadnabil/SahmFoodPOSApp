@@ -1,9 +1,15 @@
 package com.sahm.pos.sync
 
 import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
+import com.sahm.pos.data.remote.TimeRemoteDataSource
+import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
+import com.sahm.pos.domain.usecase.ClockProvider
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
+import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
 import com.sahm.pos.screens.syncDetails.SyncEffect
@@ -226,6 +232,12 @@ class SyncViewModelTest {
         return SyncViewModel(
             syncMenuItemsUseCase = SyncMenuItemsUseCase(syncDataRepo),
             syncUsersUseCase = SyncUsersUseCase(syncDataRepo),
+            syncDiscountsUseCase = SyncDiscountsUseCase(syncDataRepo),
+            checkPhoneTimeUseCase = CheckPhoneTimeUseCase(
+                timeRemoteDataSource = FakeTimeRemoteDataSource(),
+                timeLocalDataSource = FakeTimeLocalDataSource(),
+                clockProvider = FakeClockProvider(),
+            ),
             getMenuItemsUseCase = GetMenuItemsUseCase(syncDataRepo),
             syncDataRepo = syncDataRepo,
         )
@@ -256,7 +268,11 @@ class SyncViewModelTest {
             return result
         }
 
+        override suspend fun syncDiscounts(): SyncResult = result
+
         override suspend fun getActiveMenuItems(): List<MenuItem> = activeItems
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
 
         override suspend fun getUserCount(): Long = userCount
 
@@ -265,6 +281,19 @@ class SyncViewModelTest {
         override suspend fun getLastUsersSyncAt(): Long? = lastUsersSyncAt
 
         override suspend fun getLastMenuItemsSyncAt(): Long? = lastItemsSyncAt
+    }
+
+    private class FakeTimeRemoteDataSource : TimeRemoteDataSource {
+        override suspend fun getUnixTimeMillis(): Result<Long> = Result.success(1_000)
+    }
+
+    private class FakeTimeLocalDataSource : TimeLocalDataSource {
+        override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) = Unit
+        override suspend fun getTimeSyncInfo(): TimeSyncInfo? = null
+    }
+
+    private class FakeClockProvider : ClockProvider {
+        override fun nowMillis(): Long = 1_000
     }
     private companion object {
         val item = MenuItem(

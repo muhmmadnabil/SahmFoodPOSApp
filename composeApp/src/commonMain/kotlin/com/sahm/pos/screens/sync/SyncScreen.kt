@@ -18,6 +18,7 @@ fun SyncScreen(
     screenType: ScreenType,
     onUsersClick: () -> Unit,
     onItemsClick: () -> Unit,
+    onDiscountsClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -33,6 +34,7 @@ fun SyncScreen(
             ) {
                 SyncChoiceCard(type = SyncDetailType.Users, onClick = onUsersClick)
                 SyncChoiceCard(type = SyncDetailType.Items, onClick = onItemsClick)
+                SyncChoiceCard(type = SyncDetailType.Discounts, onClick = onDiscountsClick)
             }
         } else {
             Row(
@@ -48,6 +50,12 @@ fun SyncScreen(
                 SyncChoiceCard(
                     type = SyncDetailType.Items,
                     onClick = onItemsClick,
+                    modifier = Modifier.weight(1f),
+                )
+
+                SyncChoiceCard(
+                    type = SyncDetailType.Discounts,
+                    onClick = onDiscountsClick,
                     modifier = Modifier.weight(1f),
                 )
             }

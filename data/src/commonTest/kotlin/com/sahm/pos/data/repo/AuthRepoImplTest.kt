@@ -2,6 +2,7 @@ package com.sahm.pos.data.repo
 
 import com.sahm.pos.data.local.DataStoreLocalDataSource
 import com.sahm.pos.data.local.SqlDelightLocalDataSource
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.CurrentUser
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.User
@@ -119,6 +120,14 @@ class AuthRepoImplTest {
         override suspend fun getMenuItemCount(): Long = 0
 
         override suspend fun getLastMenuItemsSyncAt(): Long? = null
+
+        override suspend fun replaceAllDiscounts(discounts: List<Discount>) = Unit
+
+        override suspend fun getAllDiscounts(): List<Discount> = emptyList()
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
+
+        override suspend fun getDiscountCount(): Long = 0
     }
 
     private class FakeCurrentUserLocalDataSource(

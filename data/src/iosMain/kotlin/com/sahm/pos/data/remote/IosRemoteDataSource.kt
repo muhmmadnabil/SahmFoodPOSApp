@@ -1,6 +1,7 @@
 package com.sahm.pos.data.remote
 
 import com.sahm.pos.data.model.RemoteMenuItemDocument
+import com.sahm.pos.data.model.RemoteDiscountDocument
 import com.sahm.pos.data.model.RemoteUserDocument
 import com.sahm.pos.domain.entity.User
 
@@ -16,6 +17,10 @@ private object IosRemoteDataSource : RemoteDataSource {
     }
 
     override suspend fun getMenuItemDocuments(): List<RemoteMenuItemDocument> {
+        throw UnsupportedOperationException("Firebase Firestore is configured for Android only.")
+    }
+
+    override suspend fun getDiscountDocuments(): List<RemoteDiscountDocument> {
         throw UnsupportedOperationException("Firebase Firestore is configured for Android only.")
     }
 }
