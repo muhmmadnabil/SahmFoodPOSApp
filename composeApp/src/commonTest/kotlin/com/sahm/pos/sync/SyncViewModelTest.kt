@@ -1,13 +1,13 @@
 package com.sahm.pos.sync
 
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
 import com.sahm.pos.data.remote.TimeRemoteDataSource
 import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
-import com.sahm.pos.domain.usecase.ClockProvider
+import com.sahm.pos.domain.ClockProvider
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase

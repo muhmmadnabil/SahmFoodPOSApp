@@ -5,11 +5,21 @@ import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginViewModel
 import com.sahm.pos.screens.syncDetails.SyncViewModel
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
     viewModelOf(::MainViewModel)
-    viewModelOf(::HomeViewModel)
+    viewModel {
+        HomeViewModel(
+            getMenuItemsUseCase = get(),
+            applyDiscountUseCase = get(),
+            createOrderUseCase = get(),
+            payOrderByCashUseCase = get(),
+            payOrderByCardUseCase = get(),
+            retryPrintOrderReceiptUseCase = get(),
+        )
+    }
     viewModelOf(::LoginViewModel)
     viewModelOf(::SyncViewModel)
 }

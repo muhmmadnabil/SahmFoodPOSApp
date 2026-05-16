@@ -1,5 +1,6 @@
-package com.sahm.pos.domain
+package com.sahm.pos.domain.results
 
+import com.sahm.pos.domain.DataError
 import com.sahm.pos.domain.entity.TimeSyncInfo
 
 sealed interface CheckPhoneTimeResult {

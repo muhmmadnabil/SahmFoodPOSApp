@@ -1,6 +1,6 @@
 package com.sahm.pos.home
 
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.OrderType
@@ -9,7 +9,7 @@ import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
 import com.sahm.pos.domain.usecase.AppTimeProvider
 import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
-import com.sahm.pos.domain.usecase.ClockProvider
+import com.sahm.pos.domain.ClockProvider
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
 import com.sahm.pos.screens.home.HomeConstants
 import com.sahm.pos.screens.home.HomeIntent

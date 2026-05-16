@@ -1,4 +1,4 @@
-package com.sahm.pos.domain
+package com.sahm.pos.domain.results
 
 sealed interface SyncResult {
     data class Success(

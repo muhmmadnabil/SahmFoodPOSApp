@@ -1,5 +1,6 @@
 package com.sahm.pos.domain.usecase
 
+import com.sahm.pos.domain.ClockProvider
 import com.sahm.pos.domain.entity.TimeSyncInfo
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test

@@ -2,7 +2,7 @@ package com.sahm.pos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sahm.pos.domain.CheckPhoneTimeResult
+import com.sahm.pos.domain.results.CheckPhoneTimeResult
 import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

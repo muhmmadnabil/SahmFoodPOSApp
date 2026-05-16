@@ -72,6 +72,13 @@
     <string name="home_payment_cash">Cash</string>
     <string name="home_payment_card">Card</string>
     <string name="home_confirm_payment">Confirm Payment</string>
+    <string name="home_card_payment_title">Card Payment</string>
+    <string name="home_card_number">Card Number</string>
+    <string name="home_expiry_month">Expiry Month</string>
+    <string name="home_expiry_year">Expiry Year</string>
+    <string name="home_cvv">CVV</string>
+    <string name="home_card_holder_name">Card Holder Name</string>
+    <string name="home_pay_amount">Pay EGP %1$d.%2$s</string>
     <string name="home_cancel">Cancel</string>
     <string name="home_current_order">Current Order</string>
     <string name="home_order_items_count">%1$d items</string>

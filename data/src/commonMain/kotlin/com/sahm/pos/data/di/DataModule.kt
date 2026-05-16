@@ -1,5 +1,6 @@
 package com.sahm.pos.data.di
 
+import com.sahm.pos.data.UUIDProviderImpl
 import com.sahm.pos.data.local.DataStoreLocalDataSource
 import com.sahm.pos.data.local.DataStorePref
 import com.sahm.pos.data.local.PlatformContext
@@ -13,16 +14,24 @@ import com.sahm.pos.data.remote.TimeRemoteDataSourceImpl
 import com.sahm.pos.data.remote.createRemoteDataSource
 import com.sahm.pos.data.remote.image.createMenuItemImageCache
 import com.sahm.pos.data.repo.AuthRepoImpl
+import com.sahm.pos.data.repo.OrderRepoImpl
 import com.sahm.pos.data.repo.SyncDataRepoImpl
 import com.sahm.pos.domain.repository.AuthRepo
+import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.repository.SyncDataRepo
 import com.sahm.pos.data.remote.TimeRemoteDataSource
-import com.sahm.pos.domain.usecase.AppTimeProvider
 import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
 import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
-import com.sahm.pos.domain.usecase.ClockProvider
-import com.sahm.pos.domain.usecase.CurrentEpochMillisProvider
-import com.sahm.pos.domain.usecase.CurrentTimestampProvider
+import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.usecase.CreateOrderUseCase
+import com.sahm.pos.domain.usecase.CreateRefundUseCase
+import com.sahm.pos.domain.CurrentEpochMillisProvider
+import com.sahm.pos.domain.CurrentTimestampProvider
+import com.sahm.pos.domain.FakePaymentGateway
+import com.sahm.pos.domain.FakeReceiptPrinter
+import com.sahm.pos.domain.PaymentGateway
+import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
+import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase
@@ -33,12 +42,21 @@ import com.sahm.pos.domain.usecase.GetUsersLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.HasCurrentUserUseCase
 import com.sahm.pos.domain.usecase.HasUsersUseCase
 import com.sahm.pos.domain.usecase.LoginUseCase
+import com.sahm.pos.domain.usecase.PayOrderByCardUseCase
+import com.sahm.pos.domain.usecase.PayOrderByCashUseCase
+import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.usecase.RefundByCardUseCase
+import com.sahm.pos.domain.usecase.RefundByCashUseCase
+import com.sahm.pos.domain.usecase.RetryPrintOrderReceiptUseCase
+import com.sahm.pos.domain.usecase.RetryPrintRefundReceiptUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
-import com.sahm.pos.domain.usecase.SystemClockProvider
-import com.sahm.pos.domain.usecase.SystemCurrentEpochMillisProvider
-import com.sahm.pos.domain.usecase.SystemCurrentTimestampProvider
+import com.sahm.pos.domain.SystemClockProvider
+import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
+import com.sahm.pos.domain.SystemCurrentTimestampProvider
+import com.sahm.pos.domain.UUIDProvider
+import com.sahm.pos.domain.usecase.GetAppTimeUseCase
 import org.koin.dsl.module
 
 fun dataModule(platformContext: PlatformContext) = module {
@@ -50,15 +68,29 @@ fun dataModule(platformContext: PlatformContext) = module {
     single<RemoteDataSource> { createRemoteDataSource() }
     single { createMenuItemImageCache(platformContext) }
     single<AuthRepo> { AuthRepoImpl(get(), get()) }
+    single<OrderRepo> { OrderRepoImpl(get()) }
     single { SyncDataRepoImpl(get(), get(), get(), get(), get(), get()) }
     single<SyncDataRepo> { get<SyncDataRepoImpl>() }
     single<CurrentTimestampProvider> { SystemCurrentTimestampProvider() }
     single<CurrentEpochMillisProvider> { SystemCurrentEpochMillisProvider() }
     single<ClockProvider> { SystemClockProvider() }
-    single { AppTimeProvider(get(), get()) }
+    single<UUIDProvider> { UUIDProviderImpl() }
+    single<PaymentGateway> { FakePaymentGateway() }
+    single<ReceiptPrinter> { FakeReceiptPrinter() }
+    single { GetAppTimeUseCase(get(), get()) }
     factory { HasCurrentUserUseCase(get()) }
     factory { HasUsersUseCase(get()) }
     factory { GetMenuItemsUseCase(get()) }
+    factory { CreateOrderUseCase(get(), get(), get(), get()) }
+    factory { PayOrderByCashUseCase(get(), get(), get(), get()) }
+    factory { PayOrderByCardUseCase(get(), get(), get(), get(), get()) }
+    factory { RetryPrintOrderReceiptUseCase(get(), get()) }
+    factory { GetOrderDetailsUseCase(get()) }
+    factory { CreateRefundUseCase(get(), get(), get()) }
+    factory { RefundByCashUseCase(get(), get(), get()) }
+    factory { RefundByCardUseCase(get(), get(), get(), get()) }
+    factory { RetryPrintRefundReceiptUseCase(get(), get()) }
+    factory { GetRefundableItemsUseCase(get()) }
     factory { LoginUseCase(get(), get()) }
     factory { ApplyDiscountUseCase(get(), get()) }
     factory { CheckPhoneTimeUseCase(get(), get()) }

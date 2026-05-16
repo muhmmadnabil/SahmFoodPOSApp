@@ -7,17 +7,16 @@ import com.sahm.pos.data.remote.RemoteDataSource
 import com.sahm.pos.data.model.RemoteMenuItemDocument
 import com.sahm.pos.data.remote.image.MenuItemImageCache
 import com.sahm.pos.data.model.RemoteUserDocument
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.User
-import com.sahm.pos.domain.usecase.CurrentEpochMillisProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SyncDataRepoImplMenuItemsTest {

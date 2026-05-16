@@ -2,7 +2,7 @@ package com.sahm.pos.screens.syncDetails
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase

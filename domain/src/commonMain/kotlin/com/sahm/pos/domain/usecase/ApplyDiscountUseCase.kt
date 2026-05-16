@@ -2,10 +2,11 @@ package com.sahm.pos.domain.usecase
 
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.repository.SyncDataRepo
+import com.sahm.pos.domain.results.ApplyDiscountResult
 
 class ApplyDiscountUseCase(
     private val syncDataRepo: SyncDataRepo,
-    private val appTimeProvider: AppTimeProvider,
+    private val getAppTimeUseCase: GetAppTimeUseCase,
 ) {
     suspend operator fun invoke(
         promoCode: String,
@@ -18,7 +19,7 @@ class ApplyDiscountUseCase(
             return ApplyDiscountResult.InvalidDiscountConfiguration
         }
 
-        val now = appTimeProvider.nowMillis()
+        val now = getAppTimeUseCase.nowMillis()
         if (now < discount.startAt) return ApplyDiscountResult.PromoCodeNotStartedYet
         if (now > discount.endAt) return ApplyDiscountResult.PromoCodeExpired
 
@@ -47,17 +48,4 @@ class ApplyDiscountUseCase(
         val discountAfterMin = maxOf(rawDiscount, discount.minValue)
         return minOf(discountAfterMin, discount.maxValue, orderTotal)
     }
-}
-
-sealed interface ApplyDiscountResult {
-    data class Success(
-        val discountAmount: Double,
-        val totalAfterDiscount: Double,
-        val discount: Discount,
-    ) : ApplyDiscountResult
-
-    data object PromoCodeNotFound : ApplyDiscountResult
-    data object PromoCodeExpired : ApplyDiscountResult
-    data object PromoCodeNotStartedYet : ApplyDiscountResult
-    data object InvalidDiscountConfiguration : ApplyDiscountResult
 }

@@ -9,12 +9,12 @@ import com.sahm.pos.data.remote.RemoteDataException
 import com.sahm.pos.data.remote.RemoteDataSource
 import com.sahm.pos.data.remote.TimeRemoteDataSource
 import com.sahm.pos.data.remote.image.MenuItemImageCache
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.domain.usecase.CurrentEpochMillisProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 
 class SyncDataRepoImpl(
     private val sqlDelightLocalDataSource: SqlDelightLocalDataSource,

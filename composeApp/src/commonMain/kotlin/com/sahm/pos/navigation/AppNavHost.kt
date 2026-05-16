@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.sahm.pos.screens.home.HomeEffect
 import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeScreen
 import com.sahm.pos.screens.home.HomeViewModel
@@ -75,6 +76,15 @@ fun AppNavHost(
                 viewModel.onIntent(HomeIntent.ScreenOpened)
             }
 
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        HomeEffect.NavigateToSettings -> {}
+                        is HomeEffect.ShowMessage -> {}
+                    }
+                }
+            }
+
             HomeScreen(
                 screenType = screenType,
                 state = state,
@@ -121,7 +131,7 @@ fun AppNavHost(
             val viewModel = koinViewModel<SyncViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
 
-            LaunchedEffect(Unit){
+            LaunchedEffect(Unit) {
                 viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Items))
             }
 
@@ -147,7 +157,7 @@ fun AppNavHost(
             val viewModel = koinViewModel<SyncViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
 
-            LaunchedEffect(Unit){
+            LaunchedEffect(Unit) {
                 viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Discounts))
             }
 
