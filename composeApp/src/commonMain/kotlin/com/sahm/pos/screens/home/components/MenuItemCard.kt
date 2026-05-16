@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.sahm.pos.domain.entity.MenuItem
@@ -58,6 +59,7 @@ fun MenuItemCard(
                 fontWeight = FontWeight.Bold,
                 maxLines = if (isTablet) 1 else 2,
                 overflow = TextOverflow.Ellipsis,
+                minLines = if (isTablet) 1 else 2,
             )
             Text(
                 text = item.description,
@@ -66,6 +68,7 @@ fun MenuItemCard(
                 fontSize = if (isTablet) 13.sp else 14.sp,
                 lineHeight = if (isTablet) 18.sp else 19.sp,
                 maxLines = 3,
+                minLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             Row(

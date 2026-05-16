@@ -3,46 +3,36 @@ package com.sahm.pos.screens.home.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.screens.home.HomeOrderItemUiState
 import com.sahm.pos.theme.BorderDefault
 import com.sahm.pos.theme.CardBackground
-import com.sahm.pos.theme.PrimaryOrange
-import com.sahm.pos.theme.TextPrimary
 import kotlinx.collections.immutable.ImmutableList
-import org.jetbrains.compose.resources.stringResource
-import sahmfoodposapp.composeapp.generated.resources.Res
-import sahmfoodposapp.composeapp.generated.resources.home_current_order
-import sahmfoodposapp.composeapp.generated.resources.home_make_order
-import sahmfoodposapp.composeapp.generated.resources.home_order_items_count
 
 @Composable
 internal fun CurrentOrderPanel(
     isTablet: Boolean,
     orderItems: ImmutableList<HomeOrderItemUiState>,
+    orderTypes: ImmutableList<OrderType>,
+    selectedOrderType: OrderType,
+    discountText: String,
     subtotal: Long,
+    discount: Long,
+    service: Long,
     tax: Long,
     total: Long,
     modifier: Modifier = Modifier,
-    paymentContent: (@Composable () -> Unit)? = null,
     onQuantityChanged: (String, Int) -> Unit,
     onItemRemoved: (String) -> Unit,
+    onOrderTypeSelected: (OrderType) -> Unit,
+    onDiscountChanged: (String) -> Unit,
     onMakeOrder: () -> Unit,
 ) {
     Surface(
@@ -73,15 +63,26 @@ internal fun CurrentOrderPanel(
                 onQuantityChanged = onQuantityChanged,
                 onItemRemoved = onItemRemoved,
             )
-            paymentContent?.invoke()
+            OrderDetailsControls(
+                orderTypes = orderTypes,
+                selectedOrderType = selectedOrderType,
+                discountText = discountText,
+                isTablet = isTablet,
+                onOrderTypeSelected = onOrderTypeSelected,
+                onDiscountChanged = onDiscountChanged,
+            )
             OrderTotals(
                 subtotal = subtotal,
+                discount = discount,
+                service = service,
+                showService = selectedOrderType == OrderType.DINE_IN,
                 tax = tax,
                 total = total,
                 isTablet = isTablet,
             )
             MakeOrderButton(
                 isTablet = isTablet,
+                enabled = orderItems.isNotEmpty(),
                 onClick = onMakeOrder,
             )
         }

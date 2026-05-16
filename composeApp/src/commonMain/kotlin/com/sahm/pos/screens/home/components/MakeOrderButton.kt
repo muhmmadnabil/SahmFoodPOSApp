@@ -20,10 +20,12 @@ import sahmfoodposapp.composeapp.generated.resources.home_make_order
 @Composable
 fun MakeOrderButton(
     isTablet: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(if (isTablet) 8.dp else 10.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),

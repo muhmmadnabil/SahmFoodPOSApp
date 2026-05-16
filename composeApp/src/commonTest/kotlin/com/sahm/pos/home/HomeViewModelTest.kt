@@ -2,6 +2,8 @@ package com.sahm.pos.home
 
 import com.sahm.pos.domain.SyncResult
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.OrderType
+import com.sahm.pos.domain.entity.PaymentType
 import com.sahm.pos.domain.repository.SyncDataRepo
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
 import com.sahm.pos.screens.home.HomeConstants
@@ -101,9 +103,60 @@ class HomeViewModelTest {
     fun paymentTypeSelectedUpdatesState() = runTest {
         val viewModel = viewModel(items = menuItems)
 
-        viewModel.onIntent(HomeIntent.PaymentTypeSelected(HomeConstants.CardPaymentType))
+        viewModel.onIntent(HomeIntent.PaymentTypeSelected(PaymentType.CARD))
 
-        assertEquals(HomeConstants.CardPaymentType, viewModel.state.value.selectedPaymentType)
+        assertEquals(PaymentType.CARD, viewModel.state.value.selectedPaymentType)
+    }
+
+    @Test
+    fun dineInOrderAddsServiceAndDiscountUpdatesTotals() = runTest {
+        val viewModel = viewModel(items = menuItems)
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemQuantityChanged(classicBurger.id, 2))
+        viewModel.onIntent(HomeIntent.OrderTypeSelected(OrderType.DINE_IN))
+        viewModel.onIntent(HomeIntent.DiscountChanged("10.00"))
+
+        val state = viewModel.state.value
+        assertEquals(11_404, state.subtotal)
+        assertEquals(1_000, state.discount)
+        assertEquals(1_040, state.service)
+        assertEquals(1_602, state.tax)
+        assertEquals(13_046, state.total)
+    }
+
+    @Test
+    fun makeOrderShowsPaymentPromptOnlyWhenOrderHasItems() = runTest {
+        val viewModel = viewModel(items = menuItems)
+
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        assertEquals(false, viewModel.state.value.showPaymentPrompt)
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(fries.id))
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+
+        assertEquals(true, viewModel.state.value.showPaymentPrompt)
+    }
+
+    @Test
+    fun confirmPaymentClearsCurrentOrderAndClosesPrompt() = runTest {
+        val viewModel = viewModel(items = menuItems)
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(fries.id))
+        viewModel.onIntent(HomeIntent.DiscountChanged("1.50"))
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        viewModel.onIntent(HomeIntent.ConfirmPaymentClicked)
+
+        val state = viewModel.state.value
+        assertTrue(state.orderItems.isEmpty())
+        assertEquals("", state.discountText)
+        assertEquals(0, state.total)
+        assertEquals(false, state.showPaymentPrompt)
     }
 
     private fun TestScope.viewModel(items: List<MenuItem>): HomeViewModel {

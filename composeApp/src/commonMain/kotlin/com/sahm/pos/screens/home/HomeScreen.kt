@@ -14,7 +14,7 @@ import com.sahm.pos.screens.home.components.CategoryTabs
 import com.sahm.pos.screens.home.components.CurrentOrderPanel
 import com.sahm.pos.screens.home.components.HomeHeader
 import com.sahm.pos.screens.home.components.MenuItemsGrid
-import com.sahm.pos.screens.home.components.PaymentMethodSelector
+import com.sahm.pos.screens.home.components.PaymentPromptDialog
 import com.sahm.pos.screens.home.components.TabletHomeContent
 import com.sahm.pos.theme.ScreenBackground
 import com.sahm.pos.utils.ScreenType
@@ -54,9 +54,12 @@ fun HomeScreen(
             TabletHomeContent(
                 filteredItems = state.filteredMenuItems,
                 orderItems = state.orderItems,
-                paymentTypes = state.paymentTypes,
-                selectedPaymentType = state.selectedPaymentType,
+                orderTypes = state.orderTypes,
+                selectedOrderType = state.selectedOrderType,
+                discountText = state.discountText,
                 subtotal = state.subtotal,
+                discount = state.discount,
+                service = state.service,
                 tax = state.tax,
                 total = state.total,
                 spacing = spacing,
@@ -74,22 +77,32 @@ fun HomeScreen(
             CurrentOrderPanel(
                 isTablet = false,
                 orderItems = state.orderItems,
+                orderTypes = state.orderTypes,
+                selectedOrderType = state.selectedOrderType,
+                discountText = state.discountText,
                 subtotal = state.subtotal,
+                discount = state.discount,
+                service = state.service,
                 tax = state.tax,
                 total = state.total,
-                paymentContent = {
-                    PaymentMethodSelector(
-                        paymentTypes = state.paymentTypes,
-                        selectedPaymentType = state.selectedPaymentType,
-                        onPaymentSelected = { onIntent(HomeIntent.PaymentTypeSelected(it)) },
-                    )
-                },
                 onQuantityChanged = { itemId, quantity ->
                     onIntent(HomeIntent.ItemQuantityChanged(itemId, quantity))
                 },
                 onItemRemoved = { onIntent(HomeIntent.ItemRemoved(it)) },
+                onOrderTypeSelected = { onIntent(HomeIntent.OrderTypeSelected(it)) },
+                onDiscountChanged = { onIntent(HomeIntent.DiscountChanged(it)) },
                 onMakeOrder = { onIntent(HomeIntent.MakeOrderClicked) },
             )
         }
+    }
+
+    if (state.showPaymentPrompt) {
+        PaymentPromptDialog(
+            paymentTypes = state.paymentTypes,
+            selectedPaymentType = state.selectedPaymentType,
+            onPaymentSelected = { onIntent(HomeIntent.PaymentTypeSelected(it)) },
+            onConfirmPayment = { onIntent(HomeIntent.ConfirmPaymentClicked) },
+            onDismiss = { onIntent(HomeIntent.PaymentPromptDismissed) },
+        )
     }
 }

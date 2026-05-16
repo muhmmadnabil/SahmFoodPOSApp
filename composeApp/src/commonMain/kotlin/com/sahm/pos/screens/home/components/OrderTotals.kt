@@ -20,6 +20,8 @@ import com.sahm.pos.theme.TextPrimary
 import com.sahm.pos.theme.TextSecondary
 import org.jetbrains.compose.resources.stringResource
 import sahmfoodposapp.composeapp.generated.resources.Res
+import sahmfoodposapp.composeapp.generated.resources.home_discount
+import sahmfoodposapp.composeapp.generated.resources.home_service
 import sahmfoodposapp.composeapp.generated.resources.home_subtotal
 import sahmfoodposapp.composeapp.generated.resources.home_tax
 import sahmfoodposapp.composeapp.generated.resources.home_total
@@ -27,6 +29,9 @@ import sahmfoodposapp.composeapp.generated.resources.home_total
 @Composable
 internal fun OrderTotals(
     subtotal: Long,
+    discount: Long,
+    service: Long,
+    showService: Boolean,
     tax: Long,
     total: Long,
     isTablet: Boolean,
@@ -37,6 +42,20 @@ internal fun OrderTotals(
             value = subtotal,
             fontSize = if (isTablet) 14 else 15,
         )
+        if (discount > 0) {
+            TotalLine(
+                label = stringResource(Res.string.home_discount),
+                value = -discount,
+                fontSize = if (isTablet) 14 else 15,
+            )
+        }
+        if (showService) {
+            TotalLine(
+                label = stringResource(Res.string.home_service, HomeConstants.ServicePercent),
+                value = service,
+                fontSize = if (isTablet) 14 else 15,
+            )
+        }
         TotalLine(
             label = stringResource(Res.string.home_tax, HomeConstants.TaxPercent),
             value = tax,
@@ -79,7 +98,7 @@ private fun TotalLine(
             fontSize = fontSize.sp,
         )
         Text(
-            text = homePriceText(value),
+            text = if (value < 0) "-${homePriceText(-value)}" else homePriceText(value),
             color = TextSecondary,
             fontSize = fontSize.sp,
         )
