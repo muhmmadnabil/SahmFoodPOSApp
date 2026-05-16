@@ -33,6 +33,7 @@ kotlin {
         }
 
         androidMain.dependencies {
+            implementation(files("libs/SmartPos_1.3.6_R201217.jar"))
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.firestore)
             implementation(libs.ktor.client.android)
@@ -62,6 +63,10 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+
+    buildFeatures {
+        aidl = true
     }
 
     compileOptions {

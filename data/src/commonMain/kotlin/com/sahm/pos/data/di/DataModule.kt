@@ -9,6 +9,7 @@ import com.sahm.pos.data.local.SqlDelightLocalDataSourceImpl
 import com.sahm.pos.data.local.createCurrentUserDataStore
 import com.sahm.pos.data.local.createDatabaseDriver
 import com.sahm.pos.data.local.database.SahmPosDatabase
+import com.sahm.pos.data.printing.createReceiptPrinter
 import com.sahm.pos.data.remote.RemoteDataSource
 import com.sahm.pos.data.remote.TimeRemoteDataSourceImpl
 import com.sahm.pos.data.remote.createRemoteDataSource
@@ -28,7 +29,6 @@ import com.sahm.pos.domain.usecase.CreateRefundUseCase
 import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.CurrentTimestampProvider
 import com.sahm.pos.domain.FakePaymentGateway
-import com.sahm.pos.domain.FakeReceiptPrinter
 import com.sahm.pos.domain.PaymentGateway
 import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
 import com.sahm.pos.domain.usecase.GetOrdersUseCase
@@ -77,7 +77,7 @@ fun dataModule(platformContext: PlatformContext) = module {
     single<ClockProvider> { SystemClockProvider() }
     single<UUIDProvider> { UUIDProviderImpl() }
     single<PaymentGateway> { FakePaymentGateway() }
-    single<ReceiptPrinter> { FakeReceiptPrinter() }
+    single<ReceiptPrinter> { createReceiptPrinter(platformContext, get()) }
     single { GetAppTimeUseCase(get(), get()) }
     factory { HasCurrentUserUseCase(get()) }
     factory { HasUsersUseCase(get()) }
