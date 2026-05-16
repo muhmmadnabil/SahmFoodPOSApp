@@ -3,6 +3,7 @@ package com.sahm.pos.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -22,6 +23,7 @@ import com.sahm.pos.screens.syncDetails.SyncEffect
 import com.sahm.pos.screens.syncDetails.SyncIntent
 import com.sahm.pos.screens.syncDetails.SyncViewModel
 import com.sahm.pos.utils.ScreenType
+import org.jetbrains.compose.resources.StringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -30,8 +32,11 @@ fun AppNavHost(
     navController: NavHostController,
     screenType: ScreenType,
     startDestination: String,
+    showMessage: suspend (StringResource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentShowMessage by rememberUpdatedState(showMessage)
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -51,7 +56,7 @@ fun AppNavHost(
                         }
 
                         is LoginEffect.ShowMessage -> {
-
+                            currentShowMessage(effect.message)
                         }
 
                         LoginEffect.NavigateToSync -> {
@@ -80,7 +85,9 @@ fun AppNavHost(
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         HomeEffect.NavigateToSettings -> {}
-                        is HomeEffect.ShowMessage -> {}
+                        is HomeEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
                     }
                 }
             }
@@ -113,7 +120,7 @@ fun AppNavHost(
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
-
+                            currentShowMessage(effect.message)
                         }
                     }
                 }
@@ -139,7 +146,7 @@ fun AppNavHost(
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
-
+                            currentShowMessage(effect.message)
                         }
                     }
                 }
@@ -165,7 +172,7 @@ fun AppNavHost(
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
-
+                            currentShowMessage(effect.message)
                         }
                     }
                 }

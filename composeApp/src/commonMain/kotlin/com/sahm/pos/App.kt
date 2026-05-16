@@ -2,10 +2,13 @@ package com.sahm.pos
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -22,6 +25,8 @@ import com.sahm.pos.navigation.AppNavHost
 import com.sahm.pos.navigation.AppRoute
 import com.sahm.pos.theme.ScreenBackground
 import com.sahm.pos.utils.ScreenType
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
@@ -64,9 +69,13 @@ fun App(
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route ?: startDestination
         val showTopBar = currentRoute !in setOf(AppRoute.Login, AppRoute.Home)
+        val snackbarHostState = remember { SnackbarHostState() }
 
         Scaffold(
             containerColor = ScreenBackground,
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
+            },
             topBar = {
                 if (showTopBar) {
                     AppTopBar(
@@ -81,6 +90,7 @@ fun App(
                     navController = navController,
                     screenType = screenType,
                     startDestination = startDestination,
+                    showMessage = snackbarHostState::showMessage,
                     modifier = Modifier.padding(innerPadding),
                 )
             } else {
@@ -91,6 +101,10 @@ fun App(
 
         }
     }
+}
+
+private suspend fun SnackbarHostState.showMessage(message: StringResource) {
+    showSnackbar(message = getString(message))
 }
 
 @Composable
