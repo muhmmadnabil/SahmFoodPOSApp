@@ -83,9 +83,11 @@
     <string name="home_discount_placeholder">Enter Promo code</string>
     <string name="home_subtotal">Subtotal</string>
     <string name="home_discount">Discount</string>
+    <string name="home_discount_with_percent">Discount (%1$s%)</string>
     <string name="home_service">Service (%1$d%)</string>
     <string name="home_tax">Tax (%1$d%)</string>
     <string name="home_total">Total</string>
     <string name="home_make_order">Make Order</string>
     <string name="home_price_format">EGP %1$d.%2$s</string>
+    <string name="error_apply_discount_before_adding_items">You need to add items to the order before applying a discount."</string>
 </resources>

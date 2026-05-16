@@ -2,9 +2,12 @@ package com.sahm.pos.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.domain.entity.PaymentType
+import com.sahm.pos.domain.usecase.ApplyDiscountResult
+import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -15,9 +18,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sahmfoodposapp.composeapp.generated.resources.Res
+import sahmfoodposapp.composeapp.generated.resources.error_apply_discount_before_adding_items
+import kotlin.math.roundToLong
 
 class HomeViewModel(
     private val getMenuItemsUseCase: GetMenuItemsUseCase,
+    private val applyDiscountUseCase: ApplyDiscountUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
@@ -36,6 +43,7 @@ class HomeViewModel(
             is HomeIntent.ItemRemoved -> updateQuantity(intent.itemId, 0)
             is HomeIntent.OrderTypeSelected -> selectOrderType(intent.orderType)
             is HomeIntent.DiscountChanged -> updateDiscount(intent.discount)
+            HomeIntent.DiscountSubmitted -> applyDiscount()
             is HomeIntent.PaymentTypeSelected -> selectPaymentType(intent.paymentType)
             HomeIntent.MakeOrderClicked -> showPaymentPrompt()
             HomeIntent.ConfirmPaymentClicked -> confirmPayment()
@@ -131,9 +139,72 @@ class HomeViewModel(
         }
     }
 
-    private fun updateDiscount(discount: String) {
+    private fun updateDiscount(discountText: String) {
         _state.update { state ->
-            state.copy(discountText = discount).recalculate()
+            state.copy(discountText = discountText)
+        }
+    }
+
+    private fun applyDiscount() {
+        viewModelScope.launch {
+            val state = _state.value
+
+            if (state.discountText.isBlank()) {
+                _state.update {
+                    it.copy(
+                        isApplyingDiscount = false,
+                        appliedDiscount = null,
+                    ).recalculate()
+                }
+                return@launch
+            }
+
+            if (state.orderItems.isEmpty()) {
+                _state.update {
+                    it.copy(
+                        isApplyingDiscount = false,
+                        appliedDiscount = null,
+                    ).recalculate()
+                }
+
+                _effect.emit(HomeEffect.ShowMessage(Res.string.error_apply_discount_before_adding_items))
+
+                return@launch
+            }
+
+            _state.update { it.copy(isApplyingDiscount = true) }
+
+            val result = applyDiscountUseCase(
+                promoCode = state.discountText,
+                orderTotal = state.subtotal.toMajorAmount(),
+            )
+
+            _state.update { currentState ->
+                if (currentState.discountText.trim() != state.discountText.trim()) {
+                    return@update currentState.copy(isApplyingDiscount = false)
+                }
+
+                when (result) {
+                    is ApplyDiscountResult.Success -> currentState
+                        .copy(
+                            discountText = "",
+                            isApplyingDiscount = false,
+                            appliedDiscount = result.discount,
+                        )
+                        .recalculate()
+
+                    ApplyDiscountResult.InvalidDiscountConfiguration,
+                    ApplyDiscountResult.PromoCodeExpired,
+                    ApplyDiscountResult.PromoCodeNotFound,
+                    ApplyDiscountResult.PromoCodeNotStartedYet,
+                        -> currentState
+                        .copy(
+                            isApplyingDiscount = false,
+                            appliedDiscount = null,
+                        )
+                        .recalculate()
+                }
+            }
         }
     }
 
@@ -156,6 +227,8 @@ class HomeViewModel(
             state.copy(
                 orderItems = emptyList<HomeOrderItemUiState>().toImmutableList(),
                 discountText = "",
+                isApplyingDiscount = false,
+                appliedDiscount = null,
                 showPaymentPrompt = false,
             ).recalculate()
         }
@@ -169,9 +242,11 @@ class HomeViewModel(
         val orderItemsById = orderItems.associate { it.item.id to it.quantity }
         val recalculatedOrderItems = buildOrderItems(menuItems, orderItemsById)
         val subtotal = recalculatedOrderItems.sumOf { it.lineTotal }
-        val discountAmount = discountText.toMoneyInput().toMoneyCents().coerceAtMost(subtotal)
+        val discountAmount = appliedDiscount
+            ?.let { calculateAppliedDiscountAmount(subtotal, it) }
+            ?: 0
         val service = calculateService(subtotal - discountAmount, selectedOrderType)
-        val taxableAmount = subtotal - discountAmount + service
+        val taxableAmount = subtotal + service - discountAmount
         val tax = calculatePercent(taxableAmount, HomeConstants.TaxPercent)
 
         return copy(
@@ -213,40 +288,17 @@ class HomeViewModel(
     private fun calculatePercent(amount: Long, percent: Int): Long =
         (amount * percent + 50) / 100
 
-    private fun String.toMoneyInput(): String {
-        val trimmed = trim()
-        val builder = StringBuilder()
-        var hasDecimal = false
-        var decimalDigits = 0
-
-        trimmed.forEach { char ->
-            when {
-                char.isDigit() && !hasDecimal -> builder.append(char)
-                char.isDigit() && decimalDigits < 2 -> {
-                    builder.append(char)
-                    decimalDigits += 1
-                }
-                char == '.' && !hasDecimal -> {
-                    if (builder.isEmpty()) builder.append('0')
-                    builder.append(char)
-                    hasDecimal = true
-                }
-            }
-        }
-
-        return builder.toString()
+    private fun calculateAppliedDiscountAmount(
+        subtotal: Long,
+        discount: Discount,
+    ): Long {
+        val rawDiscount = (subtotal * discount.percent / 100.0).roundToLong()
+        val minDiscount = discount.minValue.toCents()
+        val maxDiscount = discount.maxValue.toCents()
+        return minOf(maxOf(rawDiscount, minDiscount), maxDiscount, subtotal)
     }
 
-    private fun String.toMoneyCents(): Long {
-        if (isBlank()) return 0
-        val parts = split('.', limit = 2)
-        val whole = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-        val decimal = parts.getOrNull(1)
-            .orEmpty()
-            .padEnd(2, '0')
-            .take(2)
-            .toLongOrNull()
-            ?: 0L
-        return whole * 100 + decimal
-    }
+    private fun Double.toCents(): Long = (this * 100.0).roundToLong()
+
+    private fun Long.toMajorAmount(): Double = this / 100.0
 }

@@ -21,6 +21,7 @@ import com.sahm.pos.theme.TextSecondary
 import org.jetbrains.compose.resources.stringResource
 import sahmfoodposapp.composeapp.generated.resources.Res
 import sahmfoodposapp.composeapp.generated.resources.home_discount
+import sahmfoodposapp.composeapp.generated.resources.home_discount_with_percent
 import sahmfoodposapp.composeapp.generated.resources.home_service
 import sahmfoodposapp.composeapp.generated.resources.home_subtotal
 import sahmfoodposapp.composeapp.generated.resources.home_tax
@@ -30,6 +31,7 @@ import sahmfoodposapp.composeapp.generated.resources.home_total
 internal fun OrderTotals(
     subtotal: Long,
     discount: Long,
+    appliedDiscountPercent: Double?,
     service: Long,
     showService: Boolean,
     tax: Long,
@@ -44,7 +46,9 @@ internal fun OrderTotals(
         )
         if (discount > 0) {
             TotalLine(
-                label = stringResource(Res.string.home_discount),
+                label = appliedDiscountPercent
+                    ?.let { stringResource(Res.string.home_discount_with_percent, it.toPercentText()) }
+                    ?: stringResource(Res.string.home_discount),
                 value = -discount,
                 fontSize = if (isTablet) 14 else 15,
             )
@@ -81,6 +85,15 @@ internal fun OrderTotals(
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.End,
         )
+    }
+}
+
+private fun Double.toPercentText(): String {
+    val whole = toLong()
+    return if (this == whole.toDouble()) {
+        whole.toString()
+    } else {
+        toString().trimEnd('0').trimEnd('.')
     }
 }
 

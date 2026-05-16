@@ -1,6 +1,7 @@
 package com.sahm.pos.screens.home
 
 import androidx.compose.runtime.Stable
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.domain.entity.PaymentType
@@ -27,6 +28,8 @@ data class HomeUiState(
     ),
     val selectedOrderType: OrderType = OrderType.TAKEAWAY,
     val discountText: String = "",
+    val isApplyingDiscount: Boolean = false,
+    val appliedDiscount: Discount? = null,
     val subtotal: Long = 0,
     val discount: Long = 0,
     val service: Long = 0,
@@ -51,6 +54,7 @@ sealed interface HomeIntent {
     data class ItemRemoved(val itemId: String) : HomeIntent
     data class OrderTypeSelected(val orderType: OrderType) : HomeIntent
     data class DiscountChanged(val discount: String) : HomeIntent
+    data object DiscountSubmitted : HomeIntent
     data class PaymentTypeSelected(val paymentType: PaymentType) : HomeIntent
     data object MakeOrderClicked : HomeIntent
     data object ConfirmPaymentClicked : HomeIntent
