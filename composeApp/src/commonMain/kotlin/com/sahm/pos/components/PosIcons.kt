@@ -80,6 +80,25 @@ object PosIcons {
         lineTo(11f, 14.4f)
         lineTo(15.4f, 9.8f)
     }
+
+    val Plus: ImageVector = outlinedIcon("Plus") {
+        moveTo(12f, 5f)
+        lineTo(12f, 19f)
+        moveTo(5f, 12f)
+        lineTo(19f, 12f)
+    }
+
+    val Minus: ImageVector = outlinedIcon("Minus") {
+        moveTo(5f, 12f)
+        lineTo(19f, 12f)
+    }
+
+    val Close: ImageVector = outlinedIcon("Close") {
+        moveTo(6f, 6f)
+        lineTo(18f, 18f)
+        moveTo(18f, 6f)
+        lineTo(6f, 18f)
+    }
 }
 
 private inline fun outlinedIcon(

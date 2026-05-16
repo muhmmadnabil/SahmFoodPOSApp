@@ -18,7 +18,6 @@
     <string name="login_error_password_too_short">Password must be more than 6 digits</string>
     <string name="login_error_invalid_credentials">Phone or password is wrong</string>
     <string name="login_error_generic">Something went wrong. Please try again.</string>
-    <string name="login_version">v1.0.0</string>
     <string name="sync_data_button">Sync Data</string>
     <string name="sync_title">Sync</string>
     <string name="sync_subtitle">Choose what you want to sync</string>
@@ -29,7 +28,6 @@
     <string name="sync_start_button">Start Sync</string>
     <string name="sync_downloading">Downloading</string>
     <string name="sync_last_sync">Last Sync</string>
-    <string name="sync_completed_at">May 21, 2024 9:30 AM</string>
     <string name="sync_never_synced">Never synced</string>
     <string name="sync_completed_successfully">Sync completed successfully</string>
     <string name="sync_users_success">Users synced successfully</string>
@@ -49,4 +47,22 @@
     <string name="sync_new_items">New items</string>
     <string name="sync_updated_items">Updated items</string>
     <string name="sync_failed">Failed</string>
+    <string name="home_pos_highlight">POS</string>
+    <string name="home_pos_title_suffix"> System</string>
+    <string name="home_search_label">Search</string>
+    <string name="home_search_menu_items_placeholder">Search menu items...</string>
+    <string name="home_search_items_placeholder">Search items...</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_all_category">All</string>
+    <string name="home_select_payment_method">Select Payment Method</string>
+    <string name="home_payment_cash">Cash</string>
+    <string name="home_payment_card">Card</string>
+    <string name="home_confirm_payment">Confirm Payment</string>
+    <string name="home_current_order">Current Order</string>
+    <string name="home_order_items_count">%1$d items</string>
+    <string name="home_subtotal">Subtotal</string>
+    <string name="home_tax">Tax (%1$d%)</string>
+    <string name="home_total">Total</string>
+    <string name="home_make_order">Make Order</string>
+    <string name="home_price_format">EGP %1$d.%2$s</string>
 </resources>

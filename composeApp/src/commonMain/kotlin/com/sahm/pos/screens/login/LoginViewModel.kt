@@ -161,7 +161,7 @@ class LoginViewModel(
 }
 
 private const val PhoneLength = 12
-private const val PhonePrefix = "02"
+private const val PhonePrefix = "20"
 
 private fun String.toNormalizedPhoneOrNull(): String? = buildString {
     for (char in this@toNormalizedPhoneOrNull) {

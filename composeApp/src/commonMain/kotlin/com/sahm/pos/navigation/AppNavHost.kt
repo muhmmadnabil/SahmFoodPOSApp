@@ -75,7 +75,11 @@ fun AppNavHost(
                 viewModel.onIntent(HomeIntent.ScreenOpened)
             }
 
-            HomeScreen(state = state)
+            HomeScreen(
+                screenType = screenType,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
         }
 
         composable(AppRoute.Sync) {

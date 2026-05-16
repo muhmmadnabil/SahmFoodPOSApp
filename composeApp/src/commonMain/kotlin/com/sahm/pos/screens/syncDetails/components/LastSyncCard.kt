@@ -32,12 +32,11 @@ import com.sahm.pos.theme.TextPrimary
 import com.sahm.pos.theme.TextSecondary
 import org.jetbrains.compose.resources.stringResource
 import sahmfoodposapp.composeapp.generated.resources.Res
-import sahmfoodposapp.composeapp.generated.resources.sync_completed_at
 import sahmfoodposapp.composeapp.generated.resources.sync_completed_successfully
 
 @Composable
 fun LastSyncCard(
-    lastSyncAt: String = stringResource(Res.string.sync_completed_at),
+    lastSyncAt: String ,
 ) {
     Card(
         modifier = Modifier
