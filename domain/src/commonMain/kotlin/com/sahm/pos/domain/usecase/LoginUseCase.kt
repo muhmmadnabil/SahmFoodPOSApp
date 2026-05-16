@@ -1,6 +1,8 @@
 package com.sahm.pos.domain.usecase
 
-import com.sahm.pos.domain.LoginResult
+import com.sahm.pos.domain.CurrentTimestampProvider
+import com.sahm.pos.domain.SystemCurrentTimestampProvider
+import com.sahm.pos.domain.results.LoginResult
 import com.sahm.pos.domain.entity.CurrentUser
 import com.sahm.pos.domain.repository.AuthRepo
 

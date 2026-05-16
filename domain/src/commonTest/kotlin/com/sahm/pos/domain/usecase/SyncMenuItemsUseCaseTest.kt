@@ -1,6 +1,7 @@
 package com.sahm.pos.domain.usecase
 
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.repository.SyncDataRepo
 import kotlinx.coroutines.test.runTest
@@ -68,7 +69,11 @@ class SyncMenuItemsUseCaseTest {
             return result
         }
 
+        override suspend fun syncDiscounts(): SyncResult = SyncResult.EmptyRemoteData
+
         override suspend fun getActiveMenuItems(): List<MenuItem> = emptyList()
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
 
         override suspend fun getUserCount(): Long = 0
 

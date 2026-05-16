@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.sahm.pos.screens.home.components.CategoryTabs
+import com.sahm.pos.screens.home.components.CardPaymentDialog
 import com.sahm.pos.screens.home.components.CurrentOrderPanel
 import com.sahm.pos.screens.home.components.HomeHeader
 import com.sahm.pos.screens.home.components.MenuItemsGrid
@@ -57,8 +58,10 @@ fun HomeScreen(
                 orderTypes = state.orderTypes,
                 selectedOrderType = state.selectedOrderType,
                 discountText = state.discountText,
+                isApplyingDiscount = state.isApplyingDiscount,
                 subtotal = state.subtotal,
                 discount = state.discount,
+                appliedDiscountPercent = state.appliedDiscount?.percent,
                 service = state.service,
                 tax = state.tax,
                 total = state.total,
@@ -80,8 +83,10 @@ fun HomeScreen(
                 orderTypes = state.orderTypes,
                 selectedOrderType = state.selectedOrderType,
                 discountText = state.discountText,
+                isApplyingDiscount = state.isApplyingDiscount,
                 subtotal = state.subtotal,
                 discount = state.discount,
+                appliedDiscountPercent = state.appliedDiscount?.percent,
                 service = state.service,
                 tax = state.tax,
                 total = state.total,
@@ -91,6 +96,7 @@ fun HomeScreen(
                 onItemRemoved = { onIntent(HomeIntent.ItemRemoved(it)) },
                 onOrderTypeSelected = { onIntent(HomeIntent.OrderTypeSelected(it)) },
                 onDiscountChanged = { onIntent(HomeIntent.DiscountChanged(it)) },
+                onDiscountSubmitted = { onIntent(HomeIntent.DiscountSubmitted) },
                 onMakeOrder = { onIntent(HomeIntent.MakeOrderClicked) },
             )
         }
@@ -103,6 +109,25 @@ fun HomeScreen(
             onPaymentSelected = { onIntent(HomeIntent.PaymentTypeSelected(it)) },
             onConfirmPayment = { onIntent(HomeIntent.ConfirmPaymentClicked) },
             onDismiss = { onIntent(HomeIntent.PaymentPromptDismissed) },
+        )
+    }
+
+    if (state.isCardPaymentSheetVisible) {
+        CardPaymentDialog(
+            cardNumber = state.cardNumber,
+            expiryMonth = state.expiryMonth,
+            expiryYear = state.expiryYear,
+            cvv = state.cvv,
+            cardHolderName = state.cardHolderName,
+            total = state.total,
+            isProcessing = state.isPaymentProcessing,
+            onCardNumberChanged = { onIntent(HomeIntent.CardNumberChanged(it)) },
+            onExpiryMonthChanged = { onIntent(HomeIntent.ExpiryMonthChanged(it)) },
+            onExpiryYearChanged = { onIntent(HomeIntent.ExpiryYearChanged(it)) },
+            onCvvChanged = { onIntent(HomeIntent.CvvChanged(it)) },
+            onCardHolderNameChanged = { onIntent(HomeIntent.CardHolderNameChanged(it)) },
+            onPay = { onIntent(HomeIntent.PayByCardClicked) },
+            onDismiss = { onIntent(HomeIntent.CardPaymentDismissed) },
         )
     }
 }

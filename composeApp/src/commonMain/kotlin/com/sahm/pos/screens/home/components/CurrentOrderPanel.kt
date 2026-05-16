@@ -23,8 +23,10 @@ internal fun CurrentOrderPanel(
     orderTypes: ImmutableList<OrderType>,
     selectedOrderType: OrderType,
     discountText: String,
+    isApplyingDiscount: Boolean,
     subtotal: Long,
     discount: Long,
+    appliedDiscountPercent: Double?,
     service: Long,
     tax: Long,
     total: Long,
@@ -33,6 +35,7 @@ internal fun CurrentOrderPanel(
     onItemRemoved: (String) -> Unit,
     onOrderTypeSelected: (OrderType) -> Unit,
     onDiscountChanged: (String) -> Unit,
+    onDiscountSubmitted: () -> Unit,
     onMakeOrder: () -> Unit,
 ) {
     Surface(
@@ -67,13 +70,16 @@ internal fun CurrentOrderPanel(
                 orderTypes = orderTypes,
                 selectedOrderType = selectedOrderType,
                 discountText = discountText,
+                isApplyingDiscount = isApplyingDiscount,
                 isTablet = isTablet,
                 onOrderTypeSelected = onOrderTypeSelected,
                 onDiscountChanged = onDiscountChanged,
+                onDiscountSubmitted = onDiscountSubmitted,
             )
             OrderTotals(
                 subtotal = subtotal,
                 discount = discount,
+                appliedDiscountPercent = appliedDiscountPercent,
                 service = service,
                 showService = selectedOrderType == OrderType.DINE_IN,
                 tax = tax,

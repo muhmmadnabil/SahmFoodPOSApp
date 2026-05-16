@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.sahm.pos.screens.home.HomeEffect
 import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeScreen
 import com.sahm.pos.screens.home.HomeViewModel
@@ -75,6 +76,15 @@ fun AppNavHost(
                 viewModel.onIntent(HomeIntent.ScreenOpened)
             }
 
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        HomeEffect.NavigateToSettings -> {}
+                        is HomeEffect.ShowMessage -> {}
+                    }
+                }
+            }
+
             HomeScreen(
                 screenType = screenType,
                 state = state,
@@ -87,6 +97,7 @@ fun AppNavHost(
                 screenType = screenType,
                 onUsersClick = { navController.navigate(AppRoute.SyncUsers) },
                 onItemsClick = { navController.navigate(AppRoute.SyncItems) },
+                onDiscountsClick = { navController.navigate(AppRoute.SyncDiscounts) },
             )
         }
 
@@ -95,7 +106,10 @@ fun AppNavHost(
             val state by viewModel.state.collectAsStateWithLifecycle()
 
             LaunchedEffect(Unit) {
-                viewModel.onIntent(SyncIntent.ScreenOpened)
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Users))
+            }
+
+            LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
@@ -118,7 +132,10 @@ fun AppNavHost(
             val state by viewModel.state.collectAsStateWithLifecycle()
 
             LaunchedEffect(Unit) {
-                viewModel.onIntent(SyncIntent.ScreenOpened)
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Items))
+            }
+
+            LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
                         is SyncEffect.ShowMessage -> {
@@ -131,6 +148,32 @@ fun AppNavHost(
             SyncDetailsScreen(
                 screenType = screenType,
                 type = SyncDetailType.Items,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncDiscounts) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Discounts))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Discounts,
                 state = state,
                 onIntent = viewModel::onIntent,
             )

@@ -1,21 +1,22 @@
 package com.sahm.pos.data.repo
 
 import com.sahm.pos.data.local.SqlDelightLocalDataSource
+import com.sahm.pos.data.model.RemoteDiscountDocument
 import com.sahm.pos.data.remote.RemoteDataException
 import com.sahm.pos.data.remote.RemoteDataSource
 import com.sahm.pos.data.model.RemoteMenuItemDocument
 import com.sahm.pos.data.remote.image.MenuItemImageCache
 import com.sahm.pos.data.model.RemoteUserDocument
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.User
-import com.sahm.pos.domain.usecase.CurrentEpochMillisProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SyncDataRepoImplMenuItemsTest {
@@ -262,6 +263,14 @@ class SyncDataRepoImplMenuItemsTest {
 
         override suspend fun getLastMenuItemsSyncAt(): Long? =
             items.mapNotNull { it.lastSyncedAt }.maxOrNull()
+
+        override suspend fun replaceAllDiscounts(discounts: List<Discount>) = Unit
+
+        override suspend fun getAllDiscounts(): List<Discount> = emptyList()
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
+
+        override suspend fun getDiscountCount(): Long = 0
     }
 
     private class FakeRemoteDataSource(
@@ -279,6 +288,8 @@ class SyncDataRepoImplMenuItemsTest {
             throwable?.let { throw it }
             return documents
         }
+
+        override suspend fun getDiscountDocuments(): List<RemoteDiscountDocument> = emptyList()
     }
 
     private class FakeMenuItemImageCache(

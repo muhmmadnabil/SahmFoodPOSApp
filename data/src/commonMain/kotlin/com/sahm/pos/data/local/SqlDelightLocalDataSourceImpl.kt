@@ -1,6 +1,7 @@
 package com.sahm.pos.data.local
 
 import com.sahm.pos.data.local.database.SahmPosDatabase
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.User
 
@@ -120,6 +121,39 @@ internal class SqlDelightLocalDataSourceImpl(
     override suspend fun getLastMenuItemsSyncAt(): Long? =
         database.menuItemQueries.lastSyncAt().executeAsOneOrNull()?.MAX
 
+    override suspend fun replaceAllDiscounts(discounts: List<Discount>) {
+        database.transaction {
+            database.discountQueries.deleteAll()
+            discounts.forEach { discount ->
+                require(discount.id.isNotBlank()) { "Discount id must not be blank." }
+                database.discountQueries.insert(
+                    id = discount.id,
+                    promoCode = discount.promoCode,
+                    percent = discount.percent,
+                    minValue = discount.minValue,
+                    maxValue = discount.maxValue,
+                    startAt = discount.startAt,
+                    endAt = discount.endAt,
+                    syncedAt = discount.syncAt,
+                )
+            }
+        }
+    }
+
+    override suspend fun getAllDiscounts(): List<Discount> =
+        database.discountQueries.selectAll(::mapDiscount).executeAsList()
+
+    override suspend fun getDiscountByPromoCode(promoCode: String): Discount? =
+        database.discountQueries.selectByPromoCode(promoCode, ::mapDiscount).executeAsOneOrNull()
+
+    override suspend fun getDiscountCount(): Long =
+        database.discountQueries.countAll().executeAsOne()
+
+    override suspend fun getLastDiscountsSyncAt(): Long? =
+        database.discountQueries.lastSyncAt().executeAsOneOrNull()?.MAX
+
+    override suspend fun getDiscountsCount(): Int =database.discountQueries.countAll().executeAsOne().toInt()
+
     private fun mapMenuItem(
         id: String,
         category: String,
@@ -140,5 +174,25 @@ internal class SqlDelightLocalDataSourceImpl(
         price = price,
         lastSyncedAt = last_synced_at,
         isActive = is_active == 1L,
+    )
+
+    private fun mapDiscount(
+        id: String,
+        promoCode: String,
+        percent: Double,
+        minValue: Double,
+        maxValue: Double,
+        startAt: Long,
+        endAt: Long,
+        syncedAt: Long,
+    ) = Discount(
+        id = id,
+        promoCode = promoCode,
+        percent = percent,
+        minValue = minValue,
+        maxValue = maxValue,
+        startAt = startAt,
+        endAt = endAt,
+        syncAt = syncedAt,
     )
 }

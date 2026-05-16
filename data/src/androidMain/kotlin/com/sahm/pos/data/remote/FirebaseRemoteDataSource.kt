@@ -6,6 +6,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.sahm.pos.data.mapper.toUserOrNull
+import com.sahm.pos.data.model.RemoteDiscountDocument
 import com.sahm.pos.data.model.RemoteMenuItemDocument
 import com.sahm.pos.data.model.RemoteUserDocument
 import com.sahm.pos.data.remote.RemoteDataException
@@ -17,6 +18,7 @@ import kotlin.time.Clock
 
 private const val USERS_COLLECTION = "users"
 private const val ITEMS_COLLECTION = "items"
+private const val DISCOUNTS_COLLECTION = "discounts"
 
 internal class FirebaseRemoteDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -52,6 +54,16 @@ internal class FirebaseRemoteDataSource(
                 .map { document -> document.toMenuItemDocument() }
         }
     }
+
+    override suspend fun getDiscountDocuments(): List<RemoteDiscountDocument> {
+        return mapFirebaseException {
+            firestore.collection(DISCOUNTS_COLLECTION)
+                .get()
+                .await()
+                .documents
+                .map { document -> document.toDiscountDocument() }
+        }
+    }
 }
 
 actual fun createRemoteDataSource(): RemoteDataSource = FirebaseRemoteDataSource()
@@ -77,6 +89,17 @@ private fun DocumentSnapshot.toMenuItemDocument(): RemoteMenuItemDocument =
         price = getLong("price"),
     )
 
+private fun DocumentSnapshot.toDiscountDocument(): RemoteDiscountDocument =
+    RemoteDiscountDocument(
+        id = id,
+        promo = getString("promo"),
+        percent = getNumberAsDouble("percent"),
+        minValue = getNumberAsDouble("minValue"),
+        maxValue = getNumberAsDouble("maxValue"),
+        startAt = getTimestampMillis("startAt"),
+        endAt = getTimestampMillis("endAt"),
+    )
+
 private suspend inline fun <T> mapFirebaseException(block: suspend () -> T): T =
     try {
         block()
@@ -84,8 +107,9 @@ private suspend inline fun <T> mapFirebaseException(block: suspend () -> T): T =
         throw when (exception.code) {
             FirebaseFirestoreException.Code.PERMISSION_DENIED ->
                 RemoteDataException.PermissionDenied
-            FirebaseFirestoreException.Code.UNAVAILABLE,
             FirebaseFirestoreException.Code.DEADLINE_EXCEEDED ->
+                RemoteDataException.RequestTimeout
+            FirebaseFirestoreException.Code.UNAVAILABLE ->
                 RemoteDataException.NoInternet
             else -> exception
         }
@@ -102,6 +126,23 @@ private fun DocumentSnapshot.getTimestampString(field: String): String {
         else -> ""
     }
 }
+
+private fun DocumentSnapshot.getNumberAsDouble(field: String): Double? =
+    when (val value = get(field)) {
+        is Long -> value.toDouble()
+        is Int -> value.toDouble()
+        is Double -> value
+        is Float -> value.toDouble()
+        else -> null
+    }
+
+private fun DocumentSnapshot.getTimestampMillis(field: String): Long? =
+    when (val value = get(field)) {
+        is Timestamp -> value.seconds * 1_000L + value.nanoseconds / 1_000_000L
+        is Long -> value
+        is Int -> value.toLong()
+        else -> null
+    }
 
 private suspend fun <T> Task<T>.await(): T {
     return suspendCancellableCoroutine { continuation ->

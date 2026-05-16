@@ -25,6 +25,8 @@
     <string name="sync_users_description">Download the latest users and permissions</string>
     <string name="sync_items_title">Sync Items</string>
     <string name="sync_items_description">Download the latest items, categories and prices</string>
+    <string name="sync_discounts_title">Sync Discounts</string>
+    <string name="sync_discounts_description">Download the latest promo codes and discount rules</string>
     <string name="sync_start_button">Start Sync</string>
     <string name="sync_downloading">Downloading</string>
     <string name="sync_last_sync">Last Sync</string>
@@ -34,7 +36,14 @@
     <string name="sync_users_success_with_warnings">Users synced with some invalid documents skipped</string>
     <string name="sync_items_success">Items synced successfully</string>
     <string name="sync_items_success_with_warnings">Items synced with some invalid documents skipped</string>
+    <string name="sync_discounts_success">Discounts synced successfully</string>
+    <string name="sync_discounts_success_with_warnings">Discounts synced with some invalid documents skipped</string>
+    <string name="sync_discounts_permission_denied">You do not have permission to sync discounts.</string>
+    <string name="sync_discounts_duplicate_promo">Duplicate promo codes found. Local discounts were kept safely.</string>
+    <string name="sync_invalid_remote_data">Remote data is invalid. Local data was kept safely.</string>
+    <string name="sync_local_storage_error">Could not save synced data locally. Please try again.</string>
     <string name="sync_no_internet">No internet connection. Local data was kept safely.</string>
+    <string name="sync_request_timeout">Sync timed out. Local data was kept safely.</string>
     <string name="sync_empty_remote_data">No valid remote data found. Local data was kept safely.</string>
     <string name="sync_users_permission_denied">You do not have permission to sync users.</string>
     <string name="sync_items_permission_denied">You do not have permission to sync items.</string>
@@ -44,9 +53,14 @@
     <string name="sync_new_users">New users</string>
     <string name="sync_updated_users">Updated users</string>
     <string name="sync_total_items">Total items</string>
+    <string name="sync_total_discounts">Total discounts</string>
     <string name="sync_new_items">New items</string>
+    <string name="sync_new_discounts">New discounts</string>
     <string name="sync_updated_items">Updated items</string>
+    <string name="sync_updated_discounts">Updated discounts</string>
     <string name="sync_failed">Failed</string>
+    <string name="phone_time_warning">Phone time looks incorrect. Please check date and time settings.</string>
+    <string name="phone_time_check_failed">Could not verify phone time. The app will keep running.</string>
     <string name="home_pos_highlight">POS</string>
     <string name="home_pos_title_suffix"> System</string>
     <string name="home_search_label">Search</string>
@@ -58,6 +72,13 @@
     <string name="home_payment_cash">Cash</string>
     <string name="home_payment_card">Card</string>
     <string name="home_confirm_payment">Confirm Payment</string>
+    <string name="home_card_payment_title">Card Payment</string>
+    <string name="home_card_number">Card Number</string>
+    <string name="home_expiry_month">Expiry Month</string>
+    <string name="home_expiry_year">Expiry Year</string>
+    <string name="home_cvv">CVV</string>
+    <string name="home_card_holder_name">Card Holder Name</string>
+    <string name="home_pay_amount">Pay EGP %1$d.%2$s</string>
     <string name="home_cancel">Cancel</string>
     <string name="home_current_order">Current Order</string>
     <string name="home_order_items_count">%1$d items</string>
@@ -69,9 +90,11 @@
     <string name="home_discount_placeholder">Enter Promo code</string>
     <string name="home_subtotal">Subtotal</string>
     <string name="home_discount">Discount</string>
+    <string name="home_discount_with_percent">Discount (%1$s%)</string>
     <string name="home_service">Service (%1$d%)</string>
     <string name="home_tax">Tax (%1$d%)</string>
     <string name="home_total">Total</string>
     <string name="home_make_order">Make Order</string>
     <string name="home_price_format">EGP %1$d.%2$s</string>
+    <string name="error_apply_discount_before_adding_items">You need to add items to the order before applying a discount."</string>
 </resources>

@@ -2,7 +2,7 @@ package com.sahm.pos.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sahm.pos.domain.LoginResult
+import com.sahm.pos.domain.results.LoginResult
 import com.sahm.pos.domain.usecase.LoginUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

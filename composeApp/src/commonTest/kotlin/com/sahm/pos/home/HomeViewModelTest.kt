@@ -1,10 +1,15 @@
 package com.sahm.pos.home
 
-import com.sahm.pos.domain.SyncResult
+import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.domain.entity.PaymentType
+import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
+import com.sahm.pos.domain.usecase.AppTimeProvider
+import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
+import com.sahm.pos.domain.ClockProvider
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
 import com.sahm.pos.screens.home.HomeConstants
 import com.sahm.pos.screens.home.HomeIntent
@@ -110,20 +115,88 @@ class HomeViewModelTest {
 
     @Test
     fun dineInOrderAddsServiceAndDiscountUpdatesTotals() = runTest {
-        val viewModel = viewModel(items = menuItems)
+        val viewModel = viewModel(
+            items = menuItems,
+            discounts = listOf(discount(promoCode = "SAVE10", percent = 10.0)),
+        )
 
         viewModel.onIntent(HomeIntent.ScreenOpened)
         advanceUntilIdle()
         viewModel.onIntent(HomeIntent.ItemQuantityChanged(classicBurger.id, 2))
         viewModel.onIntent(HomeIntent.OrderTypeSelected(OrderType.DINE_IN))
-        viewModel.onIntent(HomeIntent.DiscountChanged("10.00"))
+        viewModel.onIntent(HomeIntent.DiscountChanged("SAVE10"))
+        viewModel.onIntent(HomeIntent.DiscountSubmitted)
+        advanceUntilIdle()
 
         val state = viewModel.state.value
         assertEquals(11_404, state.subtotal)
-        assertEquals(1_000, state.discount)
-        assertEquals(1_040, state.service)
-        assertEquals(1_602, state.tax)
-        assertEquals(13_046, state.total)
+        assertEquals(1_140, state.discount)
+        assertEquals(1_026, state.service)
+        assertEquals(1_581, state.tax)
+        assertEquals(12_871, state.total)
+        assertEquals(10.0, state.appliedDiscount?.percent)
+        assertEquals("", state.discountText)
+        assertEquals(false, state.isApplyingDiscount)
+    }
+
+    @Test
+    fun discountChangedDoesNotSearchForPromoCodeUntilSubmitted() = runTest {
+        val repo = FakeSyncDataRepo(menuItems, listOf(discount(promoCode = "SAVE10")))
+        val viewModel = viewModel(repo)
+
+        viewModel.onIntent(HomeIntent.DiscountChanged("SAVE10"))
+        advanceUntilIdle()
+
+        assertEquals(0, repo.discountLookupCount)
+        assertEquals(null, viewModel.state.value.appliedDiscount)
+    }
+
+    @Test
+    fun appliedPromoDiscountRecalculatesWhenItemsChange() = runTest {
+        val viewModel = viewModel(
+            items = menuItems,
+            discounts = listOf(discount(promoCode = "SAVE10", percent = 10.0)),
+        )
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(classicBurger.id))
+        viewModel.onIntent(HomeIntent.DiscountChanged("SAVE10"))
+        viewModel.onIntent(HomeIntent.DiscountSubmitted)
+        advanceUntilIdle()
+
+        assertEquals(570, viewModel.state.value.discount)
+
+        viewModel.onIntent(HomeIntent.ItemQuantityChanged(classicBurger.id, 2))
+
+        assertEquals(1_140, viewModel.state.value.discount)
+    }
+
+    @Test
+    fun submittingNewValidPromoOverridesPreviousDiscount() = runTest {
+        val viewModel = viewModel(
+            items = menuItems,
+            discounts = listOf(
+                discount(promoCode = "SAVE10", percent = 10.0),
+                discount(id = "discount-2", promoCode = "SAVE20", percent = 20.0),
+            ),
+        )
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemQuantityChanged(classicBurger.id, 2))
+        viewModel.onIntent(HomeIntent.DiscountChanged("SAVE10"))
+        viewModel.onIntent(HomeIntent.DiscountSubmitted)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.DiscountChanged("SAVE20"))
+        viewModel.onIntent(HomeIntent.DiscountSubmitted)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("", state.discountText)
+        assertEquals(20.0, state.appliedDiscount?.percent)
+        assertEquals(2_281, state.discount)
+        assertEquals(false, state.isApplyingDiscount)
     }
 
     @Test
@@ -159,21 +232,43 @@ class HomeViewModelTest {
         assertEquals(false, state.showPaymentPrompt)
     }
 
-    private fun TestScope.viewModel(items: List<MenuItem>): HomeViewModel {
+    private fun TestScope.viewModel(
+        items: List<MenuItem>,
+        discounts: List<Discount> = emptyList(),
+    ): HomeViewModel = viewModel(FakeSyncDataRepo(items, discounts))
+
+    private fun TestScope.viewModel(repo: FakeSyncDataRepo): HomeViewModel {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        return HomeViewModel(GetMenuItemsUseCase(FakeSyncDataRepo(items)))
+        return HomeViewModel(
+            getMenuItemsUseCase = GetMenuItemsUseCase(repo),
+            applyDiscountUseCase = ApplyDiscountUseCase(
+                syncDataRepo = repo,
+                appTimeProvider = AppTimeProvider(repo, ClockProvider { 2_000 }),
+            ),
+        )
     }
 
     private class FakeSyncDataRepo(
         private val activeItems: List<MenuItem>,
+        private val discounts: List<Discount> = emptyList(),
     ) : SyncDataRepo {
+        var discountLookupCount = 0
+            private set
+
         override suspend fun hasUsers(): Boolean = false
 
         override suspend fun syncUsers(): SyncResult = SyncResult.Success(0, 0)
 
         override suspend fun syncMenuItems(): SyncResult = SyncResult.Success(0, 0)
 
+        override suspend fun syncDiscounts(): SyncResult = SyncResult.Success(0, 0)
+
         override suspend fun getActiveMenuItems(): List<MenuItem> = activeItems
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? {
+            discountLookupCount += 1
+            return discounts.firstOrNull { it.promoCode == promoCode }
+        }
 
         override suspend fun getUserCount(): Long = 0
 
@@ -182,6 +277,16 @@ class HomeViewModelTest {
         override suspend fun getLastUsersSyncAt(): Long? = null
 
         override suspend fun getLastMenuItemsSyncAt(): Long? = null
+
+        override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) = Unit
+
+        override suspend fun getTimeSyncInfo(): TimeSyncInfo? = null
+
+        override suspend fun getServerTimeStamp(): Long? = null
+
+        override suspend fun getLastDiscountsSyncAt(): Long? = null
+
+        override suspend fun getDiscountsCount(): Int = discounts.size
     }
 
     private companion object {
@@ -210,5 +315,15 @@ class HomeViewModelTest {
             price = 2_250,
         )
         val menuItems = listOf(classicBurger, spicyBurger, fries)
+
+        fun discount(
+            id: String = "discount-1",
+            promoCode: String = "SAVE10",
+            percent: Double = 10.0,
+            minValue: Double = 0.0,
+            maxValue: Double = 50.0,
+            startAt: Long = 1_000,
+            endAt: Long = 3_000,
+        ) = Discount(id, promoCode, percent, minValue, maxValue, startAt, endAt, 2_000)
     }
 }

@@ -70,6 +70,25 @@ object PosIcons {
         lineTo(14.5f, 12f)
     }
 
+    val Discount: ImageVector = outlinedIcon("Discount") {
+        moveTo(20f, 10.5f)
+        lineTo(13.5f, 4f)
+        lineTo(6f, 4f)
+        curveTo(4.9f, 4f, 4f, 4.9f, 4f, 6f)
+        lineTo(4f, 13.5f)
+        lineTo(10.5f, 20f)
+        curveTo(11.3f, 20.8f, 12.6f, 20.8f, 13.4f, 20f)
+        lineTo(20f, 13.4f)
+        curveTo(20.8f, 12.6f, 20.8f, 11.3f, 20f, 10.5f)
+        close()
+        moveTo(8.5f, 8.5f)
+        lineTo(8.51f, 8.5f)
+        moveTo(9f, 15f)
+        lineTo(15f, 9f)
+        moveTo(14.8f, 15.2f)
+        lineTo(14.81f, 15.2f)
+    }
+
     val CheckCircle: ImageVector = outlinedIcon("CheckCircle") {
         moveTo(20f, 12f)
         curveTo(20f, 16.4f, 16.4f, 20f, 12f, 20f)

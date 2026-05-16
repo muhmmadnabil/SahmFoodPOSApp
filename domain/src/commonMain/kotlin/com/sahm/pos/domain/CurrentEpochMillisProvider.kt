@@ -1,4 +1,4 @@
-package com.sahm.pos.domain.usecase
+package com.sahm.pos.domain
 
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime

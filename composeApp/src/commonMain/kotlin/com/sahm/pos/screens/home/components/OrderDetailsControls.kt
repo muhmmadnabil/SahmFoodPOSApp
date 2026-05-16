@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,9 +49,11 @@ internal fun OrderDetailsControls(
     orderTypes: ImmutableList<OrderType>,
     selectedOrderType: OrderType,
     discountText: String,
+    isApplyingDiscount: Boolean,
     isTablet: Boolean,
     onOrderTypeSelected: (OrderType) -> Unit,
     onDiscountChanged: (String) -> Unit,
+    onDiscountSubmitted: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(if (isTablet) 10.dp else 8.dp)) {
         Text(
@@ -109,7 +115,22 @@ internal fun OrderDetailsControls(
                 color = TextPrimary,
             ),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { onDiscountSubmitted() }),
+            trailingIcon = if (isApplyingDiscount) {
+                {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = PrimaryOrange,
+                        strokeWidth = 2.dp,
+                    )
+                }
+            } else {
+                null
+            },
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryOrange),
             shape = RoundedCornerShape(8.dp),
         )
