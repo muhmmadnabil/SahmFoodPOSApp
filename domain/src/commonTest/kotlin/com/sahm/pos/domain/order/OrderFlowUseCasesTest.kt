@@ -290,6 +290,9 @@ private class FakeOrderRepo(
         orderItems[order.id] = items.toMutableList()
     }
 
+    override suspend fun getOrders(): List<Order> =
+        orders.values.sortedByDescending { it.createdAt }
+
     override suspend fun getOrderDetails(orderId: String): OrderDetails? = orderDetails(orderId)
 
     fun orderDetails(orderId: String): OrderDetails? {

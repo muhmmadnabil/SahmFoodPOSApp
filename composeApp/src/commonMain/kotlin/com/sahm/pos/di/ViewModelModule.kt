@@ -3,6 +3,7 @@ package com.sahm.pos.di
 import com.sahm.pos.MainViewModel
 import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginViewModel
+import com.sahm.pos.screens.orders.OrdersViewModel
 import com.sahm.pos.screens.syncDetails.SyncViewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.compose.viewmodel.dsl.viewModel
@@ -21,5 +22,6 @@ val viewModelModule = module {
         )
     }
     viewModelOf(::LoginViewModel)
+    viewModelOf(::OrdersViewModel)
     viewModelOf(::SyncViewModel)
 }

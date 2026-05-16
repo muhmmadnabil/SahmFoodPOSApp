@@ -68,7 +68,14 @@ class HomeViewModel(
             HomeIntent.RetryPrintClicked -> retryPrint()
             is HomeIntent.RefundItemQuantityChanged -> updateRefundItemQuantity(intent.orderItemId, intent.quantity)
             HomeIntent.ConfirmRefundClicked -> confirmRefund()
+            HomeIntent.OnOrdersClicked -> navigateToOrders()
             HomeIntent.OnSettingsClicked -> navigateToSettings()
+        }
+    }
+
+    private fun navigateToOrders() {
+        viewModelScope.launch {
+            _effect.emit(HomeEffect.NavigateToOrders)
         }
     }
 
@@ -134,8 +141,13 @@ class HomeViewModel(
                 orderItems[itemId] = quantity
             }
 
-            state.copy(orderItems = buildOrderItems(state.menuItems, orderItems).toImmutableList())
-                .recalculate()
+            val updatedOrderItems = buildOrderItems(state.menuItems, orderItems)
+            val isSameDraft = updatedOrderItems.sameQuantitiesAs(state.orderItems)
+            state.copy(
+                orderItems = updatedOrderItems.toImmutableList(),
+                createdOrderId = if (isSameDraft) state.createdOrderId else null,
+                selectedPaymentMethod = if (isSameDraft) state.selectedPaymentMethod else null,
+            ).recalculate()
         }
     }
 
@@ -151,10 +163,14 @@ class HomeViewModel(
 
     private fun selectOrderType(orderType: OrderType) {
         _state.update { state ->
-            if (orderType !in state.orderTypes) {
+            if (orderType !in state.orderTypes || orderType == state.selectedOrderType) {
                 state
             } else {
-                state.copy(selectedOrderType = orderType).recalculate()
+                state.copy(
+                    selectedOrderType = orderType,
+                    createdOrderId = null,
+                    selectedPaymentMethod = null,
+                ).recalculate()
             }
         }
     }
@@ -174,6 +190,8 @@ class HomeViewModel(
                     it.copy(
                         isApplyingDiscount = false,
                         appliedDiscount = null,
+                        createdOrderId = if (it.appliedDiscount == null) it.createdOrderId else null,
+                        selectedPaymentMethod = if (it.appliedDiscount == null) it.selectedPaymentMethod else null,
                     ).recalculate()
                 }
                 return@launch
@@ -210,6 +228,8 @@ class HomeViewModel(
                             discountText = "",
                             isApplyingDiscount = false,
                             appliedDiscount = result.discount,
+                            createdOrderId = null,
+                            selectedPaymentMethod = null,
                         )
                         .recalculate()
 
@@ -221,6 +241,16 @@ class HomeViewModel(
                         .copy(
                             isApplyingDiscount = false,
                             appliedDiscount = null,
+                            createdOrderId = if (currentState.appliedDiscount == null) {
+                                currentState.createdOrderId
+                            } else {
+                                null
+                            },
+                            selectedPaymentMethod = if (currentState.appliedDiscount == null) {
+                                currentState.selectedPaymentMethod
+                            } else {
+                                null
+                            },
                         )
                         .recalculate()
                 }
@@ -232,6 +262,16 @@ class HomeViewModel(
         viewModelScope.launch {
             val state = _state.value
             if (state.orderItems.isEmpty() || state.isCreatingOrder) return@launch
+            if (state.createdOrderId != null) {
+                _state.update {
+                    it.copy(
+                        showPaymentPrompt = true,
+                        isPaymentMethodSheetVisible = true,
+                        errorMessage = null,
+                    )
+                }
+                return@launch
+            }
             val createOrder = createOrderUseCase
             if (createOrder == null) {
                 _state.update { it.copy(showPaymentPrompt = true, isPaymentMethodSheetVisible = true) }
@@ -309,6 +349,8 @@ class HomeViewModel(
                         discountText = "",
                         isApplyingDiscount = false,
                         appliedDiscount = null,
+                        createdOrderId = null,
+                        selectedPaymentMethod = null,
                         isPaymentProcessing = false,
                         isPrinting = false,
                     ).recalculate()
@@ -351,6 +393,8 @@ class HomeViewModel(
                         discountText = "",
                         isApplyingDiscount = false,
                         appliedDiscount = null,
+                        createdOrderId = null,
+                        selectedPaymentMethod = null,
                         isPaymentProcessing = false,
                         isPrinting = false,
                         isCardPaymentSheetVisible = false,
@@ -430,6 +474,9 @@ class HomeViewModel(
                 appliedDiscount = null,
                 showPaymentPrompt = false,
                 isPaymentMethodSheetVisible = false,
+                isCardPaymentSheetVisible = false,
+                createdOrderId = null,
+                selectedPaymentMethod = null,
             ).recalculate()
         }
     }
@@ -504,6 +551,10 @@ class HomeViewModel(
                 lineTotal = item.price * quantity,
             )
         }
+
+    private fun List<HomeOrderItemUiState>.sameQuantitiesAs(other: List<HomeOrderItemUiState>): Boolean =
+        size == other.size &&
+                associate { it.item.id to it.quantity } == other.associate { it.item.id to it.quantity }
 
     private fun calculateService(amount: Long, orderType: OrderType): Long =
         if (orderType == OrderType.DINE_IN) {

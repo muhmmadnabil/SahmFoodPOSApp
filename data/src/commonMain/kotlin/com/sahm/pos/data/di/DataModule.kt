@@ -31,6 +31,7 @@ import com.sahm.pos.domain.FakePaymentGateway
 import com.sahm.pos.domain.FakeReceiptPrinter
 import com.sahm.pos.domain.PaymentGateway
 import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
+import com.sahm.pos.domain.usecase.GetOrdersUseCase
 import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
@@ -86,6 +87,7 @@ fun dataModule(platformContext: PlatformContext) = module {
     factory { PayOrderByCardUseCase(get(), get(), get(), get(), get()) }
     factory { RetryPrintOrderReceiptUseCase(get(), get()) }
     factory { GetOrderDetailsUseCase(get()) }
+    factory { GetOrdersUseCase(get()) }
     factory { CreateRefundUseCase(get(), get(), get()) }
     factory { RefundByCashUseCase(get(), get(), get()) }
     factory { RefundByCardUseCase(get(), get(), get(), get()) }

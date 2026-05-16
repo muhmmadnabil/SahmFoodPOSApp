@@ -16,6 +16,9 @@ import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginEffect
 import com.sahm.pos.screens.login.LoginScreen
 import com.sahm.pos.screens.login.LoginViewModel
+import com.sahm.pos.screens.orders.OrdersIntent
+import com.sahm.pos.screens.orders.OrdersScreen
+import com.sahm.pos.screens.orders.OrdersViewModel
 import com.sahm.pos.screens.sync.SyncDetailType
 import com.sahm.pos.screens.sync.SyncScreen
 import com.sahm.pos.screens.syncDetails.SyncDetailsScreen
@@ -84,6 +87,10 @@ fun AppNavHost(
             LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
+                        HomeEffect.NavigateToOrders -> {
+                            navController.navigate(AppRoute.Orders)
+                        }
+
                         HomeEffect.NavigateToSettings -> {}
                         is HomeEffect.ShowMessage -> {
                             currentShowMessage(effect.message)
@@ -93,6 +100,21 @@ fun AppNavHost(
             }
 
             HomeScreen(
+                screenType = screenType,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.Orders) {
+            val viewModel = koinViewModel<OrdersViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(OrdersIntent.ScreenOpened)
+            }
+
+            OrdersScreen(
                 screenType = screenType,
                 state = state,
                 onIntent = viewModel::onIntent,

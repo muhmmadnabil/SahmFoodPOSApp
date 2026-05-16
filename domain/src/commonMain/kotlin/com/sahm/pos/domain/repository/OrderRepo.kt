@@ -18,6 +18,7 @@ interface OrderRepo {
     suspend fun getMenuItemById(id: String): MenuItem?
     suspend fun getDiscountByPromoCode(promoCode: String): Discount?
     suspend fun createOrder(order: Order, items: List<OrderItem>)
+    suspend fun getOrders(): List<Order>
     suspend fun getOrderDetails(orderId: String): OrderDetails?
     suspend fun updateOrderAfterPayment(
         orderId: String,

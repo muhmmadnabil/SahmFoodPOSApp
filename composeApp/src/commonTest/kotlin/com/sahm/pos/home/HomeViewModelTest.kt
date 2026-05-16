@@ -1,16 +1,36 @@
 package com.sahm.pos.home
 
-import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.UUIDProvider
+import com.sahm.pos.domain.entity.CurrentUser
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.Order
+import com.sahm.pos.domain.entity.OrderDetails
+import com.sahm.pos.domain.entity.OrderItem
+import com.sahm.pos.domain.entity.OrderStatus
 import com.sahm.pos.domain.entity.OrderType
+import com.sahm.pos.domain.entity.Payment
+import com.sahm.pos.domain.entity.PaymentStatus
 import com.sahm.pos.domain.entity.PaymentType
+import com.sahm.pos.domain.entity.PrintStatus
+import com.sahm.pos.domain.entity.Refund
+import com.sahm.pos.domain.entity.RefundDetails
+import com.sahm.pos.domain.entity.RefundItem
+import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.entity.TimeSyncInfo
+import com.sahm.pos.domain.entity.User
+import com.sahm.pos.domain.repository.AuthRepo
+import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.domain.usecase.AppTimeProvider
 import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
-import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.usecase.CreateOrderUseCase
+import com.sahm.pos.domain.usecase.GetAppTimeUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
+import com.sahm.pos.domain.usecase.PayOrderByCashUseCase
+import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.screens.home.HomeConstants
 import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeViewModel
@@ -232,6 +252,32 @@ class HomeViewModelTest {
         assertEquals(false, state.showPaymentPrompt)
     }
 
+    @Test
+    fun changingPaymentTypeBeforePaymentReusesCreatedOrder() = runTest {
+        val repo = FakeOrderRepo(menuItems)
+        val viewModel = orderFlowViewModel(repo)
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(fries.id))
+        viewModel.onIntent(HomeIntent.PaymentTypeSelected(PaymentType.CARD))
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ConfirmPaymentClicked)
+        viewModel.onIntent(HomeIntent.CardPaymentDismissed)
+
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.PaymentTypeSelected(PaymentType.CASH))
+        viewModel.onIntent(HomeIntent.ConfirmPaymentClicked)
+        advanceUntilIdle()
+
+        assertEquals(1, repo.createdOrderCount)
+        assertEquals(listOf("order-1"), repo.paidOrderIds)
+        assertTrue(viewModel.state.value.orderItems.isEmpty())
+        assertEquals(null, viewModel.state.value.createdOrderId)
+    }
+
     private fun TestScope.viewModel(
         items: List<MenuItem>,
         discounts: List<Discount> = emptyList(),
@@ -243,7 +289,32 @@ class HomeViewModelTest {
             getMenuItemsUseCase = GetMenuItemsUseCase(repo),
             applyDiscountUseCase = ApplyDiscountUseCase(
                 syncDataRepo = repo,
-                appTimeProvider = AppTimeProvider(repo, ClockProvider { 2_000 }),
+                getAppTimeUseCase = GetAppTimeUseCase(repo, ClockProvider { 2_000 }),
+            ),
+        )
+    }
+
+    private fun TestScope.orderFlowViewModel(repo: FakeOrderRepo): HomeViewModel {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val clockProvider = ClockProvider { 2_000 }
+        val uuidProvider = SequenceUuidProvider("order-1", "order-item-1", "payment-1")
+        return HomeViewModel(
+            getMenuItemsUseCase = GetMenuItemsUseCase(FakeSyncDataRepo(menuItems)),
+            applyDiscountUseCase = ApplyDiscountUseCase(
+                syncDataRepo = FakeSyncDataRepo(menuItems),
+                getAppTimeUseCase = GetAppTimeUseCase(FakeSyncDataRepo(menuItems), clockProvider),
+            ),
+            createOrderUseCase = CreateOrderUseCase(
+                orderRepo = repo,
+                authRepo = FakeAuthRepo,
+                uuidProvider = uuidProvider,
+                clockProvider = clockProvider,
+            ),
+            payOrderByCashUseCase = PayOrderByCashUseCase(
+                repo = repo,
+                clockProvider = clockProvider,
+                uuidProvider = uuidProvider,
+                receiptPrinter = FakeReceiptPrinter,
             ),
         )
     }
@@ -287,6 +358,111 @@ class HomeViewModelTest {
         override suspend fun getLastDiscountsSyncAt(): Long? = null
 
         override suspend fun getDiscountsCount(): Int = discounts.size
+    }
+
+    private class FakeOrderRepo(
+        private val activeItems: List<MenuItem>,
+    ) : OrderRepo {
+        private val orders = mutableMapOf<String, Order>()
+        private val orderItems = mutableMapOf<String, List<OrderItem>>()
+        private val payments = mutableMapOf<String, MutableList<Payment>>()
+        val paidOrderIds = mutableListOf<String>()
+        var createdOrderCount = 0
+            private set
+
+        override suspend fun getMenuItemById(id: String): MenuItem? = activeItems.firstOrNull { it.id == id }
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
+
+        override suspend fun createOrder(order: Order, items: List<OrderItem>) {
+            createdOrderCount += 1
+            orders[order.id] = order
+            orderItems[order.id] = items
+        }
+
+        override suspend fun getOrders(): List<Order> = orders.values.toList()
+
+        override suspend fun getOrderDetails(orderId: String): OrderDetails? {
+            val order = orders[orderId] ?: return null
+            return OrderDetails(
+                order = order,
+                items = orderItems[orderId].orEmpty(),
+                payments = payments[orderId].orEmpty(),
+                refunds = emptyList(),
+            )
+        }
+
+        override suspend fun updateOrderAfterPayment(
+            orderId: String,
+            orderStatus: OrderStatus,
+            paymentStatus: PaymentStatus,
+            paidAt: Long?,
+        ) {
+            orders[orderId] = orders.getValue(orderId)
+                .copy(orderStatus = orderStatus, paymentStatus = paymentStatus, paidAt = paidAt)
+            paidOrderIds += orderId
+        }
+
+        override suspend fun updateOrderPaymentStatus(orderId: String, paymentStatus: PaymentStatus) {
+            orders[orderId] = orders.getValue(orderId).copy(paymentStatus = paymentStatus)
+        }
+
+        override suspend fun updateOrderPrintStatus(orderId: String, printStatus: PrintStatus) {
+            orders[orderId] = orders.getValue(orderId).copy(printStatus = printStatus)
+        }
+
+        override suspend fun upsertPayment(payment: Payment) {
+            val orderPayments = payments.getOrPut(payment.orderId) { mutableListOf() }
+            val index = orderPayments.indexOfFirst { it.id == payment.id }
+            if (index >= 0) {
+                orderPayments[index] = payment
+            } else {
+                orderPayments += payment
+            }
+        }
+
+        override suspend fun getCompletedPaymentForOrder(orderId: String): Payment? =
+            payments[orderId]?.firstOrNull { it.status == PaymentStatus.Paid }
+
+        override suspend fun createRefund(refund: Refund, items: List<RefundItem>) = Unit
+
+        override suspend fun getRefundDetails(refundId: String): RefundDetails? = null
+
+        override suspend fun updateRefundStatus(refundId: String, status: RefundStatus, completedAt: Long?) = Unit
+
+        override suspend fun updateOrderRefundStatus(
+            orderId: String,
+            orderStatus: OrderStatus,
+            paymentStatus: PaymentStatus,
+        ) = Unit
+    }
+
+    private object FakeAuthRepo : AuthRepo {
+        override suspend fun getUserByPhone(phone: String): User? = null
+
+        override suspend fun saveCurrentUser(currentUser: CurrentUser) = Unit
+
+        override suspend fun getCurrentUser(): CurrentUser = CurrentUser(
+            id = "cashier-1",
+            username = "Mona",
+            phone = "020000000000",
+        )
+
+        override suspend fun updateUserLastLoginAt(userId: String, timestamp: String) = Unit
+    }
+
+    private object FakeReceiptPrinter : ReceiptPrinter {
+        override suspend fun printOrderReceipt(orderId: String): PrintResult = PrintResult.Success
+
+        override suspend fun printRefundReceipt(refundId: String): PrintResult = PrintResult.Success
+    }
+
+    private class SequenceUuidProvider(
+        private vararg val ids: String,
+    ) : UUIDProvider {
+        private var index = 0
+
+        override fun randomUuid(): String = ids.getOrElse(index++) { "id-$index" }
     }
 
     private companion object {

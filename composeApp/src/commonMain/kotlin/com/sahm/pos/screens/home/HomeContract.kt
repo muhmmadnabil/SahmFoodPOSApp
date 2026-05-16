@@ -87,10 +87,12 @@ sealed interface HomeIntent {
     data object RetryPrintClicked : HomeIntent
     data class RefundItemQuantityChanged(val orderItemId: String, val quantity: Int) : HomeIntent
     data object ConfirmRefundClicked : HomeIntent
+    data object OnOrdersClicked : HomeIntent
     data object OnSettingsClicked : HomeIntent
 }
 
 sealed interface HomeEffect {
+    data object NavigateToOrders : HomeEffect
     data object NavigateToSettings : HomeEffect
     data class ShowMessage(val message: StringResource) : HomeEffect
 }

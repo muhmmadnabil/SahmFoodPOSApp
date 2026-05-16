@@ -26,14 +26,29 @@ fun SettingsButton(
     textAlign: TextAlign = TextAlign.Start,
     onSettingsClick: () -> Unit
 ) {
+    HomeHeaderActionButton(
+        text = stringResource(Res.string.home_settings),
+        modifier = modifier,
+        textAlign = textAlign,
+        onClick = onSettingsClick,
+    )
+}
+
+@Composable
+internal fun HomeHeaderActionButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    onClick: () -> Unit,
+) {
     Surface(
-        modifier = modifier.clickable(enabled = true, onClick = onSettingsClick),
+        modifier = modifier.clickable(enabled = true, onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         color = CardBackground,
         border = BorderStroke(1.dp, BorderDefault),
     ) {
         Text(
-            text = stringResource(Res.string.home_settings),
+            text = text,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             color = TextPrimary,
             fontSize = 12.sp,

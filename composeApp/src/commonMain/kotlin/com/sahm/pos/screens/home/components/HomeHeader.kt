@@ -18,18 +18,21 @@ internal fun HomeHeader(
     isTablet: Boolean,
     searchText: String,
     onSearchChanged: (String) -> Unit,
+    onOrdersClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
     if (isTablet) {
         TabletHomeHeader(
             searchText = searchText,
             onSearchChanged = onSearchChanged,
+            onOrdersClick = onOrdersClick,
             onSettingsClick = onSettingsClick
         )
     } else {
         PhoneHomeHeader(
             searchText = searchText,
             onSearchChanged = onSearchChanged,
+            onOrdersClick = onOrdersClick,
             onSettingsClick = onSettingsClick
         )
     }
@@ -39,6 +42,7 @@ internal fun HomeHeader(
 private fun TabletHomeHeader(
     searchText: String,
     onSearchChanged: (String) -> Unit,
+    onOrdersClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     Row(
@@ -54,11 +58,16 @@ private fun TabletHomeHeader(
             searchText = searchText,
             placeholder = stringResource(Res.string.home_search_menu_items_placeholder),
             textFontSize = 14,
-            modifier = Modifier.weight(0.56f),
+            modifier = Modifier.weight(0.50f),
             onSearchChanged = onSearchChanged,
         )
+        OrdersButton(
+            modifier = Modifier.weight(0.13f),
+            textAlign = TextAlign.Center,
+            onOrdersClick = onOrdersClick,
+        )
         SettingsButton(
-            modifier = Modifier.weight(0.16f),
+            modifier = Modifier.weight(0.13f),
             textAlign = TextAlign.Center,
             onSettingsClick = onSettingsClick
         )
@@ -69,6 +78,7 @@ private fun TabletHomeHeader(
 private fun PhoneHomeHeader(
     searchText: String,
     onSearchChanged: (String) -> Unit,
+    onOrdersClick: () -> Unit,
     onSettingsClick:()-> Unit
 ) {
     Row(
@@ -80,6 +90,7 @@ private fun PhoneHomeHeader(
             modifier = Modifier.weight(1f),
             fontSize = 26,
         )
+        OrdersButton(onOrdersClick = onOrdersClick)
         SettingsButton(onSettingsClick = onSettingsClick)
     }
     HomeSearchField(

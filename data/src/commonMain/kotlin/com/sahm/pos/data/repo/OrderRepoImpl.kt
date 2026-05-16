@@ -7,6 +7,7 @@ import com.sahm.pos.domain.entity.Order
 import com.sahm.pos.domain.entity.OrderDetails
 import com.sahm.pos.domain.entity.OrderItem
 import com.sahm.pos.domain.entity.OrderStatus
+import com.sahm.pos.domain.entity.OrderType
 import com.sahm.pos.domain.entity.Payment
 import com.sahm.pos.domain.entity.PaymentStatus
 import com.sahm.pos.domain.entity.PaymentType
@@ -49,12 +50,14 @@ class OrderRepoImpl(
                 subtotal_amount = order.subtotalAmount,
                 tax_amount = order.taxAmount,
                 discount_amount = order.discountAmount,
+                service_amount = order.serviceAmount,
                 total_amount = order.totalAmount,
                 discount_id = order.discountId,
                 discount_promo_code = order.discountPromoCode,
                 discount_percent = order.discountPercent,
                 discount_min_value = order.discountMinValue,
                 discount_max_value = order.discountMaxValue,
+                order_type = order.orderType.name,
                 order_status = order.orderStatus.name,
                 payment_status = order.paymentStatus.name,
                 print_status = order.printStatus.name,
@@ -83,6 +86,9 @@ class OrderRepoImpl(
             }
         }
     }
+
+    override suspend fun getOrders(): List<Order> =
+        database.orderFlowQueries.selectOrders(::mapOrder).executeAsList()
 
     override suspend fun getOrderDetails(orderId: String): OrderDetails? {
         val order =
@@ -228,6 +234,7 @@ class OrderRepoImpl(
         discount_percent: Double?,
         discount_min_value: Double?,
         discount_max_value: Double?,
+        order_type: String,
         order_status: String,
         payment_status: String,
         print_status: String,
@@ -248,6 +255,7 @@ class OrderRepoImpl(
         discountPercent = discount_percent,
         discountMinValue = discount_min_value,
         discountMaxValue = discount_max_value,
+        orderType = OrderType.valueOf(order_type),
         orderStatus = OrderStatus.valueOf(order_status),
         paymentStatus = PaymentStatus.valueOf(payment_status),
         printStatus = PrintStatus.valueOf(print_status),

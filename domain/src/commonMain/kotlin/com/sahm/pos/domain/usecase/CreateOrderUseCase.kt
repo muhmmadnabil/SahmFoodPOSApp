@@ -68,6 +68,7 @@ class CreateOrderUseCase(
             discountPercent = discount?.percent,
             discountMinValue = discount?.minValue,
             discountMaxValue = discount?.maxValue,
+            orderType = request.orderType,
             orderStatus = OrderStatus.PendingPayment,
             paymentStatus = PaymentStatus.NotStarted,
             printStatus = PrintStatus.NotPrinted,

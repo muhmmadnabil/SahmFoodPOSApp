@@ -41,6 +41,7 @@ fun HomeScreen(
             isTablet = isTablet,
             searchText = state.searchText,
             onSearchChanged = { onIntent(HomeIntent.SearchChanged(it)) },
+            onOrdersClick = { onIntent(HomeIntent.OnOrdersClicked) },
             onSettingsClick = { onIntent(HomeIntent.OnSettingsClicked) }
         )
 

@@ -118,6 +118,17 @@ object PosIcons {
         moveTo(18f, 6f)
         lineTo(6f, 18f)
     }
+
+    val Search: ImageVector = outlinedIcon("Search") {
+        moveTo(10.5f, 18f)
+        curveTo(6.4f, 18f, 3f, 14.6f, 3f, 10.5f)
+        curveTo(3f, 6.4f, 6.4f, 3f, 10.5f, 3f)
+        curveTo(14.6f, 3f, 18f, 6.4f, 18f, 10.5f)
+        curveTo(18f, 14.6f, 14.6f, 18f, 10.5f, 18f)
+        close()
+        moveTo(16f, 16f)
+        lineTo(21f, 21f)
+    }
 }
 
 private inline fun outlinedIcon(
