@@ -14,8 +14,18 @@ import sahmfoodposapp.composeapp.generated.resources.sync_items_title
 import sahmfoodposapp.composeapp.generated.resources.sync_new_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_new_items
 import sahmfoodposapp.composeapp.generated.resources.sync_new_users
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_description
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_synced
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_title
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_unsynced
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_description
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_synced
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_title
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_unsynced
 import sahmfoodposapp.composeapp.generated.resources.sync_total_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_total_items
+import sahmfoodposapp.composeapp.generated.resources.sync_total_orders
+import sahmfoodposapp.composeapp.generated.resources.sync_total_payments
 import sahmfoodposapp.composeapp.generated.resources.sync_total_users
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_items
@@ -60,6 +70,26 @@ enum class SyncDetailType(
             SyncDetailRow(Res.string.sync_new_discounts, "0"),
             SyncDetailRow(Res.string.sync_updated_discounts, "0"),
             SyncDetailRow(Res.string.sync_failed, "0"),
+        ).toImmutableList(),
+    ),
+    Orders(
+        title = Res.string.sync_orders_title,
+        description = Res.string.sync_orders_description,
+        icon = PosIcons.Receipt,
+        rows = listOf(
+            SyncDetailRow(Res.string.sync_total_orders, "0"),
+            SyncDetailRow(Res.string.sync_orders_synced, "0"),
+            SyncDetailRow(Res.string.sync_orders_unsynced, "0"),
+        ).toImmutableList(),
+    ),
+    Payments(
+        title = Res.string.sync_payments_title,
+        description = Res.string.sync_payments_description,
+        icon = PosIcons.Card,
+        rows = listOf(
+            SyncDetailRow(Res.string.sync_total_payments, "0"),
+            SyncDetailRow(Res.string.sync_payments_synced, "0"),
+            SyncDetailRow(Res.string.sync_payments_unsynced, "0"),
         ).toImmutableList(),
     )
 }

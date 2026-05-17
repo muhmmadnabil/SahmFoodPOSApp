@@ -3,14 +3,18 @@ package com.sahm.pos.screens.syncDetails
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.results.SyncProcessorResult
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsLastSyncUseCase
+import com.sahm.pos.domain.usecase.GetOrderSyncStatsUseCase
+import com.sahm.pos.domain.usecase.GetPaymentSyncStatsUseCase
 import com.sahm.pos.domain.usecase.GetUsersCountUseCase
 import com.sahm.pos.domain.usecase.GetUsersLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
 import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
+import com.sahm.pos.domain.usecase.ProcessSyncOutboxUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
@@ -36,6 +40,8 @@ import sahmfoodposapp.composeapp.generated.resources.sync_items_success
 import sahmfoodposapp.composeapp.generated.resources.sync_items_success_with_warnings
 import sahmfoodposapp.composeapp.generated.resources.sync_local_storage_error
 import sahmfoodposapp.composeapp.generated.resources.sync_no_internet
+import sahmfoodposapp.composeapp.generated.resources.sync_outbox_needs_retry
+import sahmfoodposapp.composeapp.generated.resources.sync_outbox_success
 import sahmfoodposapp.composeapp.generated.resources.sync_request_timeout
 import sahmfoodposapp.composeapp.generated.resources.sync_unknown_error
 import sahmfoodposapp.composeapp.generated.resources.sync_users_permission_denied
@@ -54,6 +60,9 @@ class SyncViewModel(
     private val getDiscountsCountUseCase: GetDiscountsCountUseCase,
     private val getSyncOutboxCountsUseCase: GetSyncOutboxCountsUseCase? = null,
     private val manualSyncOutboxUseCase: ManualSyncOutboxUseCase? = null,
+    private val getOrderSyncStatsUseCase: GetOrderSyncStatsUseCase? = null,
+    private val getPaymentSyncStatsUseCase: GetPaymentSyncStatsUseCase? = null,
+    private val processSyncOutboxUseCase: ProcessSyncOutboxUseCase? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SyncUiState())
@@ -72,6 +81,8 @@ class SyncViewModel(
             SyncIntent.SyncItemsClicked -> syncItems()
             SyncIntent.SyncUsersClicked -> syncUsers()
             SyncIntent.SyncDiscountsClicked -> syncDiscounts()
+            SyncIntent.SyncOrdersClicked -> syncOutbox()
+            SyncIntent.SyncPaymentsClicked -> syncOutbox()
             SyncIntent.ManualOutboxSyncClicked -> manualOutboxSync()
         }
     }
@@ -98,11 +109,43 @@ class SyncViewModel(
                     val count = runCatching { getDiscountsCountUseCase() }.getOrDefault(0)
                     Pair(lastSyncAt, count)
                 }
+
+                SyncDetailType.Orders -> {
+                    val stats = runCatching { getOrderSyncStatsUseCase?.invoke() }
+                        .getOrNull()
+                    _state.update {
+                        it.copy(
+                            lastSyncAt = stats?.lastSyncAt,
+                            count = stats?.totalCount?.toInt() ?: 0,
+                            syncedCount = stats?.syncedCount ?: 0,
+                            unsyncedCount = stats?.unsyncedCount ?: 0,
+                        )
+                    }
+                    loadOutboxCounts()
+                    return@launch
+                }
+
+                SyncDetailType.Payments -> {
+                    val stats = runCatching { getPaymentSyncStatsUseCase?.invoke() }
+                        .getOrNull()
+                    _state.update {
+                        it.copy(
+                            lastSyncAt = stats?.lastSyncAt,
+                            count = stats?.totalCount?.toInt() ?: 0,
+                            syncedCount = stats?.syncedCount ?: 0,
+                            unsyncedCount = stats?.unsyncedCount ?: 0,
+                        )
+                    }
+                    loadOutboxCounts()
+                    return@launch
+                }
             }
             _state.update {
                 it.copy(
                     lastSyncAt = details.first,
                     count = details.second,
+                    syncedCount = 0,
+                    unsyncedCount = 0,
                 )
             }
             loadOutboxCounts()
@@ -124,6 +167,28 @@ class SyncViewModel(
                 failedOutboxCount = counts.failed,
                 conflictOutboxCount = counts.conflicts,
             )
+        }
+    }
+
+    private fun syncOutbox() {
+        if (_state.value.isSyncing) return
+
+        val processor = processSyncOutboxUseCase
+        if (processor == null) {
+            manualOutboxSync()
+            return
+        }
+
+        _state.update { it.copy(isSyncing = true) }
+        viewModelScope.launch {
+            val message = when (processor()) {
+                SyncProcessorResult.Success -> Res.string.sync_outbox_success
+                SyncProcessorResult.NeedsRetry -> Res.string.sync_outbox_needs_retry
+                is SyncProcessorResult.Failure -> Res.string.sync_unknown_error
+            }
+            loadSyncDetails()
+            _state.update { it.copy(isSyncing = false) }
+            emitMessage(message)
         }
     }
 

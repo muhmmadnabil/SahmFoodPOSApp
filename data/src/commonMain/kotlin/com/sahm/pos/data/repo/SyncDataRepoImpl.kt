@@ -12,6 +12,7 @@ import com.sahm.pos.data.remote.image.MenuItemImageCache
 import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateStats
 import com.sahm.pos.domain.entity.SyncAggregateType
 import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.entity.SyncOutboxType
@@ -192,7 +193,8 @@ class SyncDataRepoImpl(
     override suspend fun areDependenciesSatisfied(item: SyncOutboxItem): Boolean =
         when (item.type) {
             SyncOutboxType.CREATE_ORDER -> true
-            SyncOutboxType.CREATE_PAYMENT -> sqlDelightLocalDataSource.getPaymentSyncedAt(item.aggregateId) != null
+            SyncOutboxType.CREATE_PAYMENT ->
+                sqlDelightLocalDataSource.getPaymentOrderSyncedAt(item.aggregateId) != null
 
             SyncOutboxType.CREATE_REFUND -> {
                 val dependency = sqlDelightLocalDataSource.getRefundDependencies(item.aggregateId)
@@ -275,6 +277,11 @@ class SyncDataRepoImpl(
     override suspend fun getCountSyncItemsConflicts(): Long =
         sqlDelightLocalDataSource.countConflicts()
 
+    override suspend fun getOrderSyncStats(): SyncAggregateStats =
+        sqlDelightLocalDataSource.getOrderSyncStats()
+
+    override suspend fun getPaymentSyncStats(): SyncAggregateStats =
+        sqlDelightLocalDataSource.getPaymentSyncStats()
 
     private fun markAggregateSynced(item: SyncOutboxItem) {
         val now = currentEpochMillisProvider.now()

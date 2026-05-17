@@ -48,9 +48,6 @@ data class HomeUiState(
     val isPaymentProcessing: Boolean = false,
     val isCardPaymentSheetVisible: Boolean = false,
     val printStatus: PrintStatus = PrintStatus.NotPrinted,
-    val selectedRefundItems: Map<String, Int> = emptyMap(),
-    val selectedRefundMethod: PaymentType = PaymentType.CASH,
-    val isRefundProcessing: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -83,8 +80,6 @@ sealed interface HomeIntent {
     data object PayByCardClicked : HomeIntent
     data object CardPaymentDismissed : HomeIntent
     data object RetryPrintClicked : HomeIntent
-    data class RefundItemQuantityChanged(val orderItemId: String, val quantity: Int) : HomeIntent
-    data object ConfirmRefundClicked : HomeIntent
     data object OnOrdersClicked : HomeIntent
     data object OnSettingsClicked : HomeIntent
 }

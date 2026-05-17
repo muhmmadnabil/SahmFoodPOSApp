@@ -36,6 +36,14 @@ internal class DataStorePref(
         )
     }
 
+    override suspend fun clearCurrentUser() {
+        dataStore.edit { preferences ->
+            preferences.remove(CurrentUserIdKey)
+            preferences.remove(CurrentUsernameKey)
+            preferences.remove(CurrentUserPhoneKey)
+        }
+    }
+
     override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) {
         dataStore.edit { preferences ->
             preferences[OffsetMillisKey] = info.offsetMillis

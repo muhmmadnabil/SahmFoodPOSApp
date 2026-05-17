@@ -131,6 +131,22 @@ SELECT COUNT(*)
 FROM sync_outbox
 WHERE status = 'FAILED';
 
+selectOrderSyncStats:
+SELECT
+    COUNT(*) AS total_count,
+    COUNT(synced_at) AS synced_count,
+    COUNT(*) - COUNT(synced_at) AS unsynced_count,
+    MAX(synced_at) AS last_sync_at
+FROM orders;
+
+selectPaymentSyncStats:
+SELECT
+    COUNT(*) AS total_count,
+    COUNT(synced_at) AS synced_count,
+    COUNT(*) - COUNT(synced_at) AS unsynced_count,
+    MAX(synced_at) AS last_sync_at
+FROM payments;
+
 selectOrderSyncedAt:
 SELECT synced_at
 FROM orders

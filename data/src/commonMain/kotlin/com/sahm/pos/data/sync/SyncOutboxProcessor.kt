@@ -1,6 +1,6 @@
 package com.sahm.pos.data.sync
 
-import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.repository.SyncDataRepo
 import com.sahm.pos.domain.results.SyncProcessorResult
@@ -10,7 +10,7 @@ import com.sahm.pos.domain.sync.SyncRetryPolicy
 
 class SyncOutboxProcessorImpl(
     private val repo: SyncDataRepo,
-    private val clockProvider: SystemCurrentEpochMillisProvider,
+    private val clockProvider: CurrentEpochMillisProvider,
     private val batchLimit: Long = 50,
     private val staleLockMillis: Long = 10 * 60 * 1_000L,
 ) : SyncOutboxProcessor {

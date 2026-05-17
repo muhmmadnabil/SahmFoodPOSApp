@@ -32,7 +32,9 @@ import com.sahm.pos.domain.CurrentTimestampProvider
 import com.sahm.pos.domain.FakePaymentGateway
 import com.sahm.pos.domain.PaymentGateway
 import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
+import com.sahm.pos.domain.usecase.GetOrderSyncStatsUseCase
 import com.sahm.pos.domain.usecase.GetOrdersUseCase
+import com.sahm.pos.domain.usecase.GetPaymentSyncStatsUseCase
 import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
@@ -62,7 +64,9 @@ import com.sahm.pos.data.sync.SyncOutboxProcessorImpl
 import com.sahm.pos.domain.sync.SyncOutboxProcessor
 import com.sahm.pos.domain.sync.SyncScheduler
 import com.sahm.pos.domain.usecase.GetAppTimeUseCase
+import com.sahm.pos.domain.usecase.GetCurrentUserUseCase
 import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
+import com.sahm.pos.domain.usecase.LogoutUseCase
 import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
 import com.sahm.pos.domain.usecase.ProcessSyncOutboxUseCase
 import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
@@ -97,6 +101,8 @@ fun dataModule(platformContext: PlatformContext) = module {
     single(named(PAYMENT_PRINT_SCOPE)) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     single { GetAppTimeUseCase(get(), get()) }
     factory { HasCurrentUserUseCase(get()) }
+    factory { GetCurrentUserUseCase(get()) }
+    factory { LogoutUseCase(get()) }
     factory { HasUsersUseCase(get()) }
     factory { GetMenuItemsUseCase(get()) }
     factory { CreateOrderUseCase(get(), get(), get(), get(), get()) }
@@ -123,6 +129,8 @@ fun dataModule(platformContext: PlatformContext) = module {
     factory { GetMenuItemsCountUseCase(get()) }
     factory { GetMenuItemsLastSyncUseCase(get()) }
     factory { GetSyncOutboxCountsUseCase(get()) }
+    factory { GetOrderSyncStatsUseCase(get()) }
+    factory { GetPaymentSyncStatsUseCase(get()) }
     factory { ScheduleSyncIfPendingUseCase(get(), get()) }
     factory { ManualSyncOutboxUseCase(get()) }
     factory { ProcessSyncOutboxUseCase(get()) }

@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.sahm.pos.screens.home.components.CardPaymentDialog
 import com.sahm.pos.screens.home.components.CategoryTabs
@@ -21,7 +18,6 @@ import com.sahm.pos.screens.home.components.HomeHeader
 import com.sahm.pos.screens.home.components.MenuItemsGrid
 import com.sahm.pos.screens.home.components.PaymentPromptDialog
 import com.sahm.pos.screens.home.components.TabletHomeContent
-import com.sahm.pos.theme.PrimaryOrange
 import com.sahm.pos.theme.ScreenBackground
 import com.sahm.pos.utils.ScreenType
 

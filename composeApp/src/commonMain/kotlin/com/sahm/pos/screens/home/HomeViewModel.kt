@@ -66,12 +66,6 @@ class HomeViewModel(
             HomeIntent.PayByCardClicked -> payByCard()
             HomeIntent.CardPaymentDismissed -> dismissCardPayment()
             HomeIntent.RetryPrintClicked -> retryPrint()
-            is HomeIntent.RefundItemQuantityChanged -> updateRefundItemQuantity(
-                intent.orderItemId,
-                intent.quantity
-            )
-
-            HomeIntent.ConfirmRefundClicked -> confirmRefund()
             HomeIntent.OnOrdersClicked -> navigateToOrders()
             HomeIntent.OnSettingsClicked -> navigateToSettings()
         }
@@ -446,35 +440,6 @@ class HomeViewModel(
 
     private fun updateCardHolderName(value: String) {
         _state.update { it.copy(cardHolderName = value) }
-    }
-
-    private fun updateRefundItemQuantity(orderItemId: String, quantity: Int) {
-        _state.update { state ->
-            state.copy(
-                selectedRefundItems = state.selectedRefundItems + (orderItemId to quantity.coerceAtLeast(
-                    0
-                ))
-            )
-        }
-    }
-
-    private fun confirmRefund() {
-        _state.update { it.copy(isRefundProcessing = false) }
-    }
-
-    private fun clearDraftAfterPayment() {
-        _state.update { state ->
-            state.copy(
-                orderItems = emptyList<HomeOrderItemUiState>().toImmutableList(),
-                discountText = "",
-                isApplyingDiscount = false,
-                appliedDiscount = null,
-                showPaymentPrompt = false,
-                isCardPaymentSheetVisible = false,
-                createdOrderId = null,
-                selectedPaymentMethod = null,
-            ).recalculate()
-        }
     }
 
     private fun validateCardFields(state: HomeUiState): String? {

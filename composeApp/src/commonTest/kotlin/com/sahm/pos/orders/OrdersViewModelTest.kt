@@ -1,5 +1,6 @@
 package com.sahm.pos.orders
 
+import com.sahm.pos.domain.FakeReceiptPrinter
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.Order
@@ -15,7 +16,9 @@ import com.sahm.pos.domain.entity.RefundDetails
 import com.sahm.pos.domain.entity.RefundItem
 import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.repository.OrderRepo
+import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
 import com.sahm.pos.domain.usecase.GetOrdersUseCase
+import com.sahm.pos.domain.usecase.RetryPrintOrderReceiptUseCase
 import com.sahm.pos.screens.orders.OrdersIntent
 import com.sahm.pos.screens.orders.OrdersViewModel
 import kotlinx.coroutines.Dispatchers
@@ -73,14 +76,58 @@ class OrdersViewModelTest {
         assertEquals(listOf("DELIVERY-20", "DELIVERY-10"), viewModel.state.value.orders.map { it.id })
     }
 
+    @Test
+    fun orderSelectedLoadsOrderDetails() = runTest {
+        val viewModel = viewModel(listOf(order(id = "ORDER-100")))
+
+        viewModel.onIntent(OrdersIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(OrdersIntent.OrderSelected("ORDER-100"))
+        advanceUntilIdle()
+
+        assertEquals("ORDER-100", viewModel.state.value.selectedOrderDetails?.id)
+        assertEquals("Mona", viewModel.state.value.selectedOrderDetails?.cashierName)
+    }
+
+    @Test
+    fun printAgainRefreshesPrintStatus() = runTest {
+        val viewModel = viewModel(
+            listOf(
+                order(
+                    id = "ORDER-100",
+                    orderStatus = OrderStatus.Paid,
+                    paymentStatus = PaymentStatus.Paid,
+                    printStatus = PrintStatus.Failed,
+                ),
+            ),
+        )
+
+        viewModel.onIntent(OrdersIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(OrdersIntent.OrderSelected("ORDER-100"))
+        advanceUntilIdle()
+        viewModel.onIntent(OrdersIntent.PrintAgainClicked)
+        advanceUntilIdle()
+
+        assertEquals(PrintStatus.Printed, viewModel.state.value.selectedOrderDetails?.printStatus)
+        assertEquals(PrintStatus.Printed, viewModel.state.value.orders.single().printStatus)
+    }
+
     private fun TestScope.viewModel(orders: List<Order>): OrdersViewModel {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        return OrdersViewModel(GetOrdersUseCase(FakeOrderRepo(orders)))
+        val repo = FakeOrderRepo(orders)
+        return OrdersViewModel(
+            getOrdersUseCase = GetOrdersUseCase(repo),
+            getOrderDetailsUseCase = GetOrderDetailsUseCase(repo),
+            retryPrintOrderReceiptUseCase = RetryPrintOrderReceiptUseCase(repo, FakeReceiptPrinter()),
+        )
     }
 
     private class FakeOrderRepo(
-        private val orders: List<Order>,
+        orders: List<Order>,
     ) : OrderRepo {
+        private val orders = orders.toMutableList()
+
         override suspend fun getOrders(): List<Order> = orders
 
         override suspend fun getMenuItemById(id: String): MenuItem? = null
@@ -89,7 +136,15 @@ class OrdersViewModelTest {
 
         override suspend fun createOrder(order: Order, items: List<OrderItem>) = Unit
 
-        override suspend fun getOrderDetails(orderId: String): OrderDetails? = null
+        override suspend fun getOrderDetails(orderId: String): OrderDetails? =
+            orders.firstOrNull { it.id == orderId }?.let {
+                OrderDetails(
+                    order = it,
+                    items = emptyList(),
+                    payments = emptyList(),
+                    refunds = emptyList(),
+                )
+            }
 
         override suspend fun updateOrderAfterPayment(
             orderId: String,
@@ -100,7 +155,12 @@ class OrdersViewModelTest {
 
         override suspend fun updateOrderPaymentStatus(orderId: String, paymentStatus: PaymentStatus) = Unit
 
-        override suspend fun updateOrderPrintStatus(orderId: String, printStatus: PrintStatus) = Unit
+        override suspend fun updateOrderPrintStatus(orderId: String, printStatus: PrintStatus) {
+            val index = orders.indexOfFirst { it.id == orderId }
+            if (index >= 0) {
+                orders[index] = orders[index].copy(printStatus = printStatus)
+            }
+        }
 
         override suspend fun upsertPayment(payment: Payment) = Unit
 
@@ -124,6 +184,9 @@ class OrdersViewModelTest {
             id: String,
             orderType: OrderType = OrderType.TAKEAWAY,
             createdAt: Long = 1_000,
+            orderStatus: OrderStatus = OrderStatus.PendingPayment,
+            paymentStatus: PaymentStatus = PaymentStatus.NotStarted,
+            printStatus: PrintStatus = PrintStatus.NotPrinted,
         ) = Order(
             id = id,
             cashierId = "cashier-1",
@@ -138,9 +201,9 @@ class OrdersViewModelTest {
             discountMinValue = null,
             discountMaxValue = null,
             orderType = orderType,
-            orderStatus = OrderStatus.PendingPayment,
-            paymentStatus = PaymentStatus.NotStarted,
-            printStatus = PrintStatus.NotPrinted,
+            orderStatus = orderStatus,
+            paymentStatus = paymentStatus,
+            printStatus = printStatus,
             createdAt = createdAt,
             paidAt = null,
             cancelledAt = null,

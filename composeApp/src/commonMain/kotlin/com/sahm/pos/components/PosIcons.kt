@@ -38,6 +38,20 @@ object PosIcons {
         lineTo(15.5f, 15f)
     }
 
+    val LogOut: ImageVector = outlinedIcon("LogOut") {
+        moveTo(10f, 17f)
+        lineTo(6f, 17f)
+        curveTo(4.9f, 17f, 4f, 16.1f, 4f, 15f)
+        lineTo(4f, 9f)
+        curveTo(4f, 7.9f, 4.9f, 7f, 6f, 7f)
+        lineTo(10f, 7f)
+        moveTo(14f, 8f)
+        lineTo(18f, 12f)
+        lineTo(14f, 16f)
+        moveTo(18f, 12f)
+        lineTo(9f, 12f)
+    }
+
     val Users: ImageVector = outlinedIcon("Users") {
         moveTo(16f, 20f)
         curveTo(16f, 17.8f, 14.2f, 16f, 12f, 16f)
@@ -87,6 +101,40 @@ object PosIcons {
         lineTo(15f, 9f)
         moveTo(14.8f, 15.2f)
         lineTo(14.81f, 15.2f)
+    }
+
+    val Receipt: ImageVector = outlinedIcon("Receipt") {
+        moveTo(7f, 4f)
+        lineTo(7f, 20f)
+        lineTo(9.5f, 18.5f)
+        lineTo(12f, 20f)
+        lineTo(14.5f, 18.5f)
+        lineTo(17f, 20f)
+        lineTo(17f, 4f)
+        lineTo(14.5f, 5.5f)
+        lineTo(12f, 4f)
+        lineTo(9.5f, 5.5f)
+        close()
+        moveTo(10f, 9f)
+        lineTo(14f, 9f)
+        moveTo(10f, 13f)
+        lineTo(14f, 13f)
+    }
+
+    val Card: ImageVector = outlinedIcon("Card") {
+        moveTo(4f, 7f)
+        curveTo(4f, 5.9f, 4.9f, 5f, 6f, 5f)
+        lineTo(18f, 5f)
+        curveTo(19.1f, 5f, 20f, 5.9f, 20f, 7f)
+        lineTo(20f, 17f)
+        curveTo(20f, 18.1f, 19.1f, 19f, 18f, 19f)
+        lineTo(6f, 19f)
+        curveTo(4.9f, 19f, 4f, 18.1f, 4f, 17f)
+        close()
+        moveTo(4f, 9f)
+        lineTo(20f, 9f)
+        moveTo(7f, 15f)
+        lineTo(11f, 15f)
     }
 
     val CheckCircle: ImageVector = outlinedIcon("CheckCircle") {

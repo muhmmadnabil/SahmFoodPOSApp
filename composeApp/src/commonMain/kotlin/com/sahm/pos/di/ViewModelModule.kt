@@ -4,6 +4,7 @@ import com.sahm.pos.MainViewModel
 import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginViewModel
 import com.sahm.pos.screens.orders.OrdersViewModel
+import com.sahm.pos.screens.settings.SettingsViewModel
 import com.sahm.pos.screens.syncDetails.SyncViewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.compose.viewmodel.dsl.viewModel
@@ -23,6 +24,7 @@ val viewModelModule = module {
     }
     viewModel { LoginViewModel(get(), get()) }
     viewModelOf(::OrdersViewModel)
+    viewModelOf(::SettingsViewModel)
     viewModel {
         SyncViewModel(
             syncMenuItemsUseCase = get(),
@@ -36,6 +38,9 @@ val viewModelModule = module {
             getDiscountsCountUseCase = get(),
             getSyncOutboxCountsUseCase = get(),
             manualSyncOutboxUseCase = get(),
+            getOrderSyncStatsUseCase = get(),
+            getPaymentSyncStatsUseCase = get(),
+            processSyncOutboxUseCase = get(),
         )
     }
 }

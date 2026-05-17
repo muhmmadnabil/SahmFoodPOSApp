@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +22,17 @@ fun SyncScreen(
     onUsersClick: () -> Unit,
     onItemsClick: () -> Unit,
     onDiscountsClick: () -> Unit,
+    onOrdersClick: () -> Unit,
+    onPaymentsClick: () -> Unit,
 ) {
+    val choices = listOf(
+        SyncDetailType.Users to onUsersClick,
+        SyncDetailType.Items to onItemsClick,
+        SyncDetailType.Discounts to onDiscountsClick,
+        SyncDetailType.Orders to onOrdersClick,
+        SyncDetailType.Payments to onPaymentsClick,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -30,34 +43,33 @@ fun SyncScreen(
         if (screenType == ScreenType.Phone) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterVertically),
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
             ) {
-                SyncChoiceCard(type = SyncDetailType.Users, onClick = onUsersClick)
-                SyncChoiceCard(type = SyncDetailType.Items, onClick = onItemsClick)
-                SyncChoiceCard(type = SyncDetailType.Discounts, onClick = onDiscountsClick)
+                choices.forEach { (type, onClick) ->
+                    SyncChoiceCard(type = type, onClick = onClick)
+                }
             }
         } else {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                SyncChoiceCard(
-                    type = SyncDetailType.Users,
-                    onClick = onUsersClick,
-                    modifier = Modifier.weight(1f),
-                )
-
-                SyncChoiceCard(
-                    type = SyncDetailType.Items,
-                    onClick = onItemsClick,
-                    modifier = Modifier.weight(1f),
-                )
-
-                SyncChoiceCard(
-                    type = SyncDetailType.Discounts,
-                    onClick = onDiscountsClick,
-                    modifier = Modifier.weight(1f),
-                )
+                choices.chunked(3).forEach { rowChoices ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        rowChoices.forEach { (type, onClick) ->
+                            SyncChoiceCard(
+                                type = type,
+                                onClick = onClick,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.sahm.pos.screens.orders.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,12 +30,18 @@ import sahmfoodposapp.composeapp.generated.resources.Res
 import sahmfoodposapp.composeapp.generated.resources.home_price_format
 
 @Composable
-fun OrderRow(order: OrderUiState) {
+fun OrderRow(
+    order: OrderUiState,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = CardBackground,
-        border = BorderStroke(1.dp, BorderDefault),
+        border = BorderStroke(1.dp, if (isSelected) PrimaryOrange else BorderDefault),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -82,7 +89,7 @@ fun OrderRow(order: OrderUiState) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "${order.orderStatus.name} / ${order.paymentStatus.name}",
+                    text = "${order.orderStatus.name} / ${order.paymentStatus.name} / ${order.printStatus.name}",
                     color = TextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,

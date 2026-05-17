@@ -26,8 +26,14 @@ import sahmfoodposapp.composeapp.generated.resources.sync_never_synced
 import sahmfoodposapp.composeapp.generated.resources.sync_new_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_new_items
 import sahmfoodposapp.composeapp.generated.resources.sync_new_users
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_synced
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_unsynced
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_synced
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_unsynced
 import sahmfoodposapp.composeapp.generated.resources.sync_total_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_total_items
+import sahmfoodposapp.composeapp.generated.resources.sync_total_orders
+import sahmfoodposapp.composeapp.generated.resources.sync_total_payments
 import sahmfoodposapp.composeapp.generated.resources.sync_total_users
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_discounts
 import sahmfoodposapp.composeapp.generated.resources.sync_updated_items
@@ -61,6 +67,18 @@ fun SyncDetailsScreen(
             SyncDetailRow(Res.string.sync_updated_discounts, "0"),
             SyncDetailRow(Res.string.sync_failed, state.skippedCount.toString()),
         )
+
+        SyncDetailType.Orders -> listOf(
+            SyncDetailRow(Res.string.sync_total_orders, state.count.toString()),
+            SyncDetailRow(Res.string.sync_orders_synced, state.syncedCount.toString()),
+            SyncDetailRow(Res.string.sync_orders_unsynced, state.unsyncedCount.toString()),
+        )
+
+        SyncDetailType.Payments -> listOf(
+            SyncDetailRow(Res.string.sync_total_payments, state.count.toString()),
+            SyncDetailRow(Res.string.sync_payments_synced, state.syncedCount.toString()),
+            SyncDetailRow(Res.string.sync_payments_unsynced, state.unsyncedCount.toString()),
+        )
     }.toImmutableList()
     val lastSyncAt =
         state.lastSyncAt?.toUtcDateTimeText() ?: stringResource(Res.string.sync_never_synced)
@@ -79,6 +97,8 @@ fun SyncDetailsScreen(
                     SyncDetailType.Users -> onIntent(SyncIntent.SyncUsersClicked)
                     SyncDetailType.Items -> onIntent(SyncIntent.SyncItemsClicked)
                     SyncDetailType.Discounts -> onIntent(SyncIntent.SyncDiscountsClicked)
+                    SyncDetailType.Orders -> onIntent(SyncIntent.SyncOrdersClicked)
+                    SyncDetailType.Payments -> onIntent(SyncIntent.SyncPaymentsClicked)
                 }
             },
         )

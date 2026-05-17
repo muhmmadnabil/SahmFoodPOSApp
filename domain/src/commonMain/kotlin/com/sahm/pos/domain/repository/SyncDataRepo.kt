@@ -3,6 +3,7 @@ package com.sahm.pos.domain.repository
 import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateStats
 import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.results.SyncUploadResult
@@ -44,4 +45,6 @@ interface SyncDataRepo {
     suspend fun getCountSyncItemsPending(): Long
     suspend fun getCountSyncItemsFailed(): Long
     suspend fun getCountSyncItemsConflicts(): Long
+    suspend fun getOrderSyncStats(): SyncAggregateStats = SyncAggregateStats.Empty
+    suspend fun getPaymentSyncStats(): SyncAggregateStats = SyncAggregateStats.Empty
 }

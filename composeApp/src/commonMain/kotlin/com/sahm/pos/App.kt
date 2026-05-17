@@ -34,8 +34,11 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.dsl.koinConfiguration
 import sahmfoodposapp.composeapp.generated.resources.Res
 import sahmfoodposapp.composeapp.generated.resources.orders_title
+import sahmfoodposapp.composeapp.generated.resources.settings_title
 import sahmfoodposapp.composeapp.generated.resources.sync_discounts_title
 import sahmfoodposapp.composeapp.generated.resources.sync_items_title
+import sahmfoodposapp.composeapp.generated.resources.sync_orders_title
+import sahmfoodposapp.composeapp.generated.resources.sync_payments_title
 import sahmfoodposapp.composeapp.generated.resources.sync_title
 import sahmfoodposapp.composeapp.generated.resources.sync_users_title
 
@@ -135,8 +138,11 @@ private fun String.topBarTitle(): String =
     when (this) {
         AppRoute.Sync -> stringResource(Res.string.sync_title)
         AppRoute.Orders -> stringResource(Res.string.orders_title)
+        AppRoute.Settings -> stringResource(Res.string.settings_title)
         AppRoute.SyncUsers -> stringResource(Res.string.sync_users_title)
         AppRoute.SyncItems -> stringResource(Res.string.sync_items_title)
         AppRoute.SyncDiscounts -> stringResource(Res.string.sync_discounts_title)
+        AppRoute.SyncOrders -> stringResource(Res.string.sync_orders_title)
+        AppRoute.SyncPayments -> stringResource(Res.string.sync_payments_title)
         else -> ""
     }

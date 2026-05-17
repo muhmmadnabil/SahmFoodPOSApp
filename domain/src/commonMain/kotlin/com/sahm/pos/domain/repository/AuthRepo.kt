@@ -7,5 +7,6 @@ interface AuthRepo {
     suspend fun getUserByPhone(phone: String): User?
     suspend fun saveCurrentUser(currentUser: CurrentUser)
     suspend fun getCurrentUser(): CurrentUser?
+    suspend fun clearCurrentUser() = Unit
     suspend fun updateUserLastLoginAt(userId: String, timestamp: String)
 }

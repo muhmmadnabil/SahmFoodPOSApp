@@ -4,6 +4,7 @@ import com.sahm.pos.data.local.database.SahmPosDatabase
 import com.sahm.pos.data.local.database.SelectRefundDependencies
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateStats
 import com.sahm.pos.domain.entity.SyncAggregateType
 import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.entity.SyncOutboxStatus
@@ -248,19 +249,41 @@ internal class SqlDelightLocalDataSourceImpl(
     override suspend fun countFailed(): Long =
         database.syncOutboxQueries.countFailed().executeAsOne()
 
+    override suspend fun getOrderSyncStats(): SyncAggregateStats =
+        database.syncOutboxQueries.selectOrderSyncStats { totalCount, syncedCount, unsyncedCount, lastSyncAt ->
+            SyncAggregateStats(
+                totalCount = totalCount,
+                syncedCount = syncedCount,
+                unsyncedCount = unsyncedCount,
+                lastSyncAt = lastSyncAt,
+            )
+        }.executeAsOne()
+
+    override suspend fun getPaymentSyncStats(): SyncAggregateStats =
+        database.syncOutboxQueries.selectPaymentSyncStats { totalCount, syncedCount, unsyncedCount, lastSyncAt ->
+            SyncAggregateStats(
+                totalCount = totalCount,
+                syncedCount = syncedCount,
+                unsyncedCount = unsyncedCount,
+                lastSyncAt = lastSyncAt,
+            )
+        }.executeAsOne()
+
     override suspend fun isAggregateSynced(
         aggregateType: SyncAggregateType,
         aggregateId: String
     ): Boolean {
         val syncedAt = when (aggregateType) {
             SyncAggregateType.ORDER -> database.syncOutboxQueries.selectOrderSyncedAt(aggregateId)
-                .executeAsOneOrNull()
+                .executeAsOneOrNull()?.synced_at
 
             SyncAggregateType.PAYMENT ->
-                database.syncOutboxQueries.selectPaymentSyncedAt(aggregateId).executeAsOneOrNull()
+                database.syncOutboxQueries.selectPaymentSyncedAt(aggregateId)
+                    .executeAsOneOrNull()?.synced_at
 
             SyncAggregateType.REFUND ->
-                database.syncOutboxQueries.selectRefundSyncedAt(aggregateId).executeAsOneOrNull()
+                database.syncOutboxQueries.selectRefundSyncedAt(aggregateId)
+                    .executeAsOneOrNull()?.synced_at
         }
         return syncedAt != null
     }
@@ -283,6 +306,10 @@ internal class SqlDelightLocalDataSourceImpl(
 
     override fun getPaymentSyncedAt(aggregateId: String): Long? =
         database.syncOutboxQueries.selectPaymentSyncedAt(aggregateId).executeAsOneOrNull()?.synced_at
+
+    override fun getPaymentOrderSyncedAt(paymentId: String): Long? =
+        database.syncOutboxQueries.selectPaymentOrderSyncedAt(paymentId)
+            .executeAsOneOrNull()?.synced_at
 
     private fun mapMenuItem(
         id: String,

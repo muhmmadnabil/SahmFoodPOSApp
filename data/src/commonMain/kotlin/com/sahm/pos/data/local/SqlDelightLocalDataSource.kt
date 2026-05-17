@@ -3,6 +3,7 @@ package com.sahm.pos.data.local
 import com.sahm.pos.data.local.database.SelectRefundDependencies
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateStats
 import com.sahm.pos.domain.entity.SyncAggregateType
 import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.entity.User
@@ -66,4 +67,7 @@ interface SqlDelightLocalDataSource {
     fun markRefundSynced(time: Long, aggregateId: String)
     fun getRefundDependencies(aggregateId: String): SelectRefundDependencies?
     fun getPaymentSyncedAt(aggregateId: String): Long?
+    fun getPaymentOrderSyncedAt(paymentId: String): Long? = null
+    suspend fun getOrderSyncStats(): SyncAggregateStats
+    suspend fun getPaymentSyncStats(): SyncAggregateStats
 }
