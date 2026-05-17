@@ -9,6 +9,8 @@ import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsLastSyncUseCase
 import com.sahm.pos.domain.usecase.GetUsersCountUseCase
 import com.sahm.pos.domain.usecase.GetUsersLastSyncAtUseCase
+import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
+import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
@@ -49,7 +51,9 @@ class SyncViewModel(
     private val getMenuItemsLastSyncUseCase: GetMenuItemsLastSyncUseCase,
     private val getUsersLastSyncAtUseCase: GetUsersLastSyncAtUseCase,
     private val getDiscountsLastSyncAtUseCase: GetDiscountsLastSyncAtUseCase,
-    private val getDiscountsCountUseCase: GetDiscountsCountUseCase
+    private val getDiscountsCountUseCase: GetDiscountsCountUseCase,
+    private val getSyncOutboxCountsUseCase: GetSyncOutboxCountsUseCase? = null,
+    private val manualSyncOutboxUseCase: ManualSyncOutboxUseCase? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SyncUiState())
@@ -68,6 +72,7 @@ class SyncViewModel(
             SyncIntent.SyncItemsClicked -> syncItems()
             SyncIntent.SyncUsersClicked -> syncUsers()
             SyncIntent.SyncDiscountsClicked -> syncDiscounts()
+            SyncIntent.ManualOutboxSyncClicked -> manualOutboxSync()
         }
     }
 
@@ -100,6 +105,25 @@ class SyncViewModel(
                     count = details.second,
                 )
             }
+            loadOutboxCounts()
+        }
+    }
+
+    private fun manualOutboxSync() {
+        manualSyncOutboxUseCase?.invoke()
+        viewModelScope.launch {
+            loadOutboxCounts()
+        }
+    }
+
+    private suspend fun loadOutboxCounts() {
+        val counts = getSyncOutboxCountsUseCase?.invoke() ?: return
+        _state.update {
+            it.copy(
+                pendingOutboxCount = counts.pending,
+                failedOutboxCount = counts.failed,
+                conflictOutboxCount = counts.conflicts,
+            )
         }
     }
 

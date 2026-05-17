@@ -1,9 +1,15 @@
 package com.sahm.pos.data.local
 
 import com.sahm.pos.data.local.database.SahmPosDatabase
+import com.sahm.pos.data.local.database.SelectRefundDependencies
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateType
+import com.sahm.pos.domain.entity.SyncOutboxItem
+import com.sahm.pos.domain.entity.SyncOutboxStatus
+import com.sahm.pos.domain.entity.SyncOutboxType
 import com.sahm.pos.domain.entity.User
+import kotlin.text.toLong
 
 internal class SqlDelightLocalDataSourceImpl(
     private val database: SahmPosDatabase,
@@ -152,7 +158,131 @@ internal class SqlDelightLocalDataSourceImpl(
     override suspend fun getLastDiscountsSyncAt(): Long? =
         database.discountQueries.lastSyncAt().executeAsOneOrNull()?.MAX
 
-    override suspend fun getDiscountsCount(): Int =database.discountQueries.countAll().executeAsOne().toInt()
+    override suspend fun getDiscountsCount(): Int =
+        database.discountQueries.countAll().executeAsOne().toInt()
+
+    override suspend fun insertOutboxItem(item: SyncOutboxItem) {
+        database.syncOutboxQueries.insertOutboxItem(
+            id = item.id,
+            type = item.type.name,
+            aggregate_id = item.aggregateId,
+            aggregate_type = item.aggregateType.name,
+            payload_json = item.payloadJson,
+            idempotency_key = item.idempotencyKey,
+            status = item.status.name,
+            retry_count = item.retryCount.toLong(),
+            max_retries = item.maxRetries.toLong(),
+            next_attempt_at = item.nextAttemptAt,
+            created_at = item.createdAt,
+            updated_at = item.updatedAt,
+            locked_at = item.lockedAt,
+            last_error_code = item.lastErrorCode,
+            last_error_message = item.lastErrorMessage,
+        )
+    }
+
+    override suspend fun getPendingItems(
+        nowMillis: Long,
+        limit: Long
+    ): List<SyncOutboxItem> =
+        database.syncOutboxQueries.selectPendingItems(nowMillis, limit, ::mapOutboxItem)
+            .executeAsList()
+
+    override suspend fun markSyncItemInProgress(id: String, nowMillis: Long) {
+        database.syncOutboxQueries.markInProgress(nowMillis, nowMillis, id)
+    }
+
+    override suspend fun markSyncItemSucceeded(id: String, nowMillis: Long) {
+        database.syncOutboxQueries.markSucceeded(nowMillis, id)
+    }
+
+    override suspend fun markRetryWaiting(
+        id: String,
+        retryCount: Int,
+        nextAttemptAt: Long,
+        errorCode: String,
+        errorMessage: String,
+        nowMillis: Long
+    ) {
+        database.syncOutboxQueries.markRetryWaiting(
+            retry_count = retryCount.toLong(),
+            next_attempt_at = nextAttemptAt,
+            last_error_code = errorCode,
+            last_error_message = errorMessage,
+            updated_at = nowMillis,
+            id = id,
+        )
+    }
+
+    override suspend fun markSyncItemFailed(
+        id: String,
+        errorCode: String,
+        errorMessage: String,
+        nowMillis: Long
+    ) {
+        database.syncOutboxQueries.markFailed(errorCode, errorMessage, nowMillis, id)
+    }
+
+    override suspend fun markSyncItemConflict(
+        id: String,
+        errorCode: String,
+        errorMessage: String,
+        nowMillis: Long
+    ) {
+        database.syncOutboxQueries.markConflict(errorCode, errorMessage, nowMillis, id)
+    }
+
+    override suspend fun resetStaleInProgress(
+        expiredBeforeMillis: Long,
+        nowMillis: Long
+    ) {
+        database.syncOutboxQueries.resetStaleInProgress(nowMillis, expiredBeforeMillis)
+    }
+
+    override suspend fun countSyncItemsPending(): Long =
+        database.syncOutboxQueries.countPending().executeAsOne()
+
+    override suspend fun countConflicts(): Long =
+        database.syncOutboxQueries.countConflicts().executeAsOne()
+
+    override suspend fun countFailed(): Long =
+        database.syncOutboxQueries.countFailed().executeAsOne()
+
+    override suspend fun isAggregateSynced(
+        aggregateType: SyncAggregateType,
+        aggregateId: String
+    ): Boolean {
+        val syncedAt = when (aggregateType) {
+            SyncAggregateType.ORDER -> database.syncOutboxQueries.selectOrderSyncedAt(aggregateId)
+                .executeAsOneOrNull()
+
+            SyncAggregateType.PAYMENT ->
+                database.syncOutboxQueries.selectPaymentSyncedAt(aggregateId).executeAsOneOrNull()
+
+            SyncAggregateType.REFUND ->
+                database.syncOutboxQueries.selectRefundSyncedAt(aggregateId).executeAsOneOrNull()
+        }
+        return syncedAt != null
+    }
+
+    override fun markOrderSynced(time: Long, aggregateId: String) {
+        database.syncOutboxQueries.markOrderSynced(synced_at = time, id = aggregateId)
+    }
+
+    override fun markPaymentSynced(time: Long, aggregateId: String) {
+        database.syncOutboxQueries.markPaymentSynced(synced_at = time, id = aggregateId)
+    }
+
+    override fun markRefundSynced(time: Long, aggregateId: String) {
+        database.syncOutboxQueries.markRefundSynced(synced_at = time, id = aggregateId)
+    }
+
+    override fun getRefundDependencies(aggregateId: String): SelectRefundDependencies? =
+        database.syncOutboxQueries.selectRefundDependencies(aggregateId)
+            .executeAsOneOrNull()
+
+    override fun getPaymentSyncedAt(aggregateId: String): Long? =
+        database.syncOutboxQueries.selectPaymentSyncedAt(aggregateId).executeAsOneOrNull()?.synced_at
 
     private fun mapMenuItem(
         id: String,
@@ -194,5 +324,39 @@ internal class SqlDelightLocalDataSourceImpl(
         startAt = startAt,
         endAt = endAt,
         syncAt = syncedAt,
+    )
+
+    private fun mapOutboxItem(
+        id: String,
+        type: String,
+        aggregate_id: String,
+        aggregate_type: String,
+        payload_json: String,
+        idempotency_key: String,
+        status: String,
+        retry_count: Long,
+        max_retries: Long,
+        next_attempt_at: Long?,
+        created_at: Long,
+        updated_at: Long,
+        locked_at: Long?,
+        last_error_code: String?,
+        last_error_message: String?,
+    ) = SyncOutboxItem(
+        id = id,
+        type = SyncOutboxType.valueOf(type),
+        aggregateId = aggregate_id,
+        aggregateType = SyncAggregateType.valueOf(aggregate_type),
+        payloadJson = payload_json,
+        idempotencyKey = idempotency_key,
+        status = SyncOutboxStatus.valueOf(status),
+        retryCount = retry_count.toInt(),
+        maxRetries = max_retries.toInt(),
+        nextAttemptAt = next_attempt_at,
+        createdAt = created_at,
+        updatedAt = updated_at,
+        lockedAt = locked_at,
+        lastErrorCode = last_error_code,
+        lastErrorMessage = last_error_message,
     )
 }

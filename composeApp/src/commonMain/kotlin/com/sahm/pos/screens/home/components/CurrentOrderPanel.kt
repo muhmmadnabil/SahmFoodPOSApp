@@ -24,6 +24,7 @@ internal fun CurrentOrderPanel(
     selectedOrderType: OrderType,
     discountText: String,
     isApplyingDiscount: Boolean,
+    isCreatingOrder: Boolean,
     subtotal: Long,
     discount: Long,
     appliedDiscountPercent: Double?,
@@ -88,7 +89,7 @@ internal fun CurrentOrderPanel(
             )
             MakeOrderButton(
                 isTablet = isTablet,
-                enabled = orderItems.isNotEmpty(),
+                enabled = orderItems.isNotEmpty() && !isCreatingOrder,
                 onClick = onMakeOrder,
             )
         }

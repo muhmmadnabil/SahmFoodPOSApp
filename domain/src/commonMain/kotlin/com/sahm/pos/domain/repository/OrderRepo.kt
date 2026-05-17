@@ -16,6 +16,9 @@ import com.sahm.pos.domain.entity.RefundStatus
 
 interface OrderRepo {
     suspend fun getMenuItemById(id: String): MenuItem?
+    suspend fun getMenuItemsByIds(ids: Collection<String>): List<MenuItem> =
+        ids.distinct().mapNotNull { getMenuItemById(it) }
+
     suspend fun getDiscountByPromoCode(promoCode: String): Discount?
     suspend fun createOrder(order: Order, items: List<OrderItem>)
     suspend fun getOrders(): List<Order>

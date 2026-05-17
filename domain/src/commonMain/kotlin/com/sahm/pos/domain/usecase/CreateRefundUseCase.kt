@@ -10,12 +10,14 @@ import com.sahm.pos.domain.entity.RefundItem
 import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.CreateRefundResult
+import com.sahm.pos.domain.sync.SyncScheduler
 import kotlin.math.floor
 
 class CreateRefundUseCase(
     private val repo: OrderRepo,
     private val clockProvider: ClockProvider,
     private val uuidProvider: UUIDProvider,
+    private val syncScheduler: SyncScheduler? = null,
 ) {
     suspend operator fun invoke(request: CreateRefundRequest): CreateRefundResult {
         if (request.selections.isEmpty()) return CreateRefundResult.EmptySelection
@@ -60,6 +62,7 @@ class CreateRefundUseCase(
 
         return runCatching {
             repo.createRefund(refund, materializedItems)
+            syncScheduler?.scheduleSync()
             CreateRefundResult.Success(refundId)
         }.getOrElse { CreateRefundResult.Failed(it.message ?: "Could not create refund.") }
     }

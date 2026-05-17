@@ -17,6 +17,7 @@ import com.sahm.pos.data.remote.image.createMenuItemImageCache
 import com.sahm.pos.data.repo.AuthRepoImpl
 import com.sahm.pos.data.repo.OrderRepoImpl
 import com.sahm.pos.data.repo.SyncDataRepoImpl
+import com.sahm.pos.data.sync.createSyncScheduler
 import com.sahm.pos.domain.repository.AuthRepo
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.repository.SyncDataRepo
@@ -57,8 +58,21 @@ import com.sahm.pos.domain.SystemClockProvider
 import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
 import com.sahm.pos.domain.SystemCurrentTimestampProvider
 import com.sahm.pos.domain.UUIDProvider
+import com.sahm.pos.data.sync.SyncOutboxProcessorImpl
+import com.sahm.pos.domain.sync.SyncOutboxProcessor
+import com.sahm.pos.domain.sync.SyncScheduler
 import com.sahm.pos.domain.usecase.GetAppTimeUseCase
+import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
+import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
+import com.sahm.pos.domain.usecase.ProcessSyncOutboxUseCase
+import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+
+private const val PAYMENT_PRINT_SCOPE = "paymentPrintScope"
 
 fun dataModule(platformContext: PlatformContext) = module {
     single { SahmPosDatabase(createDatabaseDriver(platformContext)) }
@@ -70,6 +84,8 @@ fun dataModule(platformContext: PlatformContext) = module {
     single { createMenuItemImageCache(platformContext) }
     single<AuthRepo> { AuthRepoImpl(get(), get()) }
     single<OrderRepo> { OrderRepoImpl(get()) }
+    single<SyncScheduler> { createSyncScheduler(platformContext) }
+    single<SyncOutboxProcessor> { SyncOutboxProcessorImpl(get(), get()) }
     single { SyncDataRepoImpl(get(), get(), get(), get(), get(), get()) }
     single<SyncDataRepo> { get<SyncDataRepoImpl>() }
     single<CurrentTimestampProvider> { SystemCurrentTimestampProvider() }
@@ -78,17 +94,18 @@ fun dataModule(platformContext: PlatformContext) = module {
     single<UUIDProvider> { UUIDProviderImpl() }
     single<PaymentGateway> { FakePaymentGateway() }
     single<ReceiptPrinter> { createReceiptPrinter(platformContext, get()) }
+    single(named(PAYMENT_PRINT_SCOPE)) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     single { GetAppTimeUseCase(get(), get()) }
     factory { HasCurrentUserUseCase(get()) }
     factory { HasUsersUseCase(get()) }
     factory { GetMenuItemsUseCase(get()) }
-    factory { CreateOrderUseCase(get(), get(), get(), get()) }
-    factory { PayOrderByCashUseCase(get(), get(), get(), get()) }
-    factory { PayOrderByCardUseCase(get(), get(), get(), get(), get()) }
-    factory { RetryPrintOrderReceiptUseCase(get(), get()) }
+    factory { CreateOrderUseCase(get(), get(), get(), get(), get()) }
+    factory { PayOrderByCashUseCase(get(), get(), get(), get(), get(), get(named(PAYMENT_PRINT_SCOPE))) }
+    factory { PayOrderByCardUseCase(get(), get(), get(), get(), get(), get(), get(named(PAYMENT_PRINT_SCOPE))) }
+    factory { RetryPrintOrderReceiptUseCase(get(), get(), get()) }
     factory { GetOrderDetailsUseCase(get()) }
     factory { GetOrdersUseCase(get()) }
-    factory { CreateRefundUseCase(get(), get(), get()) }
+    factory { CreateRefundUseCase(get(), get(), get(), get()) }
     factory { RefundByCashUseCase(get(), get(), get()) }
     factory { RefundByCardUseCase(get(), get(), get(), get()) }
     factory { RetryPrintRefundReceiptUseCase(get(), get()) }
@@ -105,4 +122,8 @@ fun dataModule(platformContext: PlatformContext) = module {
     factory { GetUsersCountUseCase(get()) }
     factory { GetMenuItemsCountUseCase(get()) }
     factory { GetMenuItemsLastSyncUseCase(get()) }
+    factory { GetSyncOutboxCountsUseCase(get()) }
+    factory { ScheduleSyncIfPendingUseCase(get(), get()) }
+    factory { ManualSyncOutboxUseCase(get()) }
+    factory { ProcessSyncOutboxUseCase(get()) }
 }

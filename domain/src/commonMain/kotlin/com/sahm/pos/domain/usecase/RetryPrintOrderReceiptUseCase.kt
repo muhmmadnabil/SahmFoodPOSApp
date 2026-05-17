@@ -5,10 +5,12 @@ import com.sahm.pos.domain.entity.OrderStatus
 import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.sync.SyncScheduler
 
 class RetryPrintOrderReceiptUseCase(
     private val repo: OrderRepo,
     private val receiptPrinter: ReceiptPrinter,
+    private val syncScheduler: SyncScheduler? = null,
 ) {
     suspend operator fun invoke(orderId: String): Result<Unit> {
         val details = repo.getOrderDetails(orderId)
@@ -21,6 +23,7 @@ class RetryPrintOrderReceiptUseCase(
             PrintResult.Success -> repo.updateOrderPrintStatus(orderId, PrintStatus.Printed)
             is PrintResult.Failed -> repo.updateOrderPrintStatus(orderId, PrintStatus.Failed)
         }
+        syncScheduler?.scheduleSync()
         return Result.success(Unit)
     }
 }

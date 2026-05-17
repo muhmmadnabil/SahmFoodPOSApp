@@ -1,6 +1,6 @@
 package com.sahm.pos.domain.usecase
 
-import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.UUIDProvider
 import com.sahm.pos.domain.entity.CreateOrderRequest
 import com.sahm.pos.domain.entity.Discount
@@ -13,33 +13,44 @@ import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.AuthRepo
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.CreateOrderResult
+import com.sahm.pos.domain.sync.SyncScheduler
 import kotlin.math.roundToLong
 
 class CreateOrderUseCase(
     private val orderRepo: OrderRepo,
     private val authRepo: AuthRepo,
     private val uuidProvider: UUIDProvider,
-    private val clockProvider: ClockProvider,
+    private val timeProvider: CurrentEpochMillisProvider,
+    private val syncScheduler: SyncScheduler,
 ) {
     suspend operator fun invoke(request: CreateOrderRequest): CreateOrderResult {
         if (request.items.isEmpty()) return CreateOrderResult.EmptyCart
         if (request.items.any { it.quantity <= 0 }) return CreateOrderResult.InvalidQuantity
 
         val cashier = authRepo.getCurrentUser() ?: return CreateOrderResult.CashierMissing
-        for (item in request.items) {
-            val localItem = orderRepo.getMenuItemById(item.menuItem.id)
-                ?: return CreateOrderResult.MenuItemNotFound
-            if (!localItem.isActive) return CreateOrderResult.MenuItemInactive
+        val localMenuItemsById = orderRepo.getMenuItemsByIds(
+            request.items.map { it.menuItem.id }
+        ).associateBy { it.id }
+
+        val menuValidationError = request.items.firstNotNullOfOrNull { item ->
+            val localItem = localMenuItemsById[item.menuItem.id]
+            when {
+                localItem == null -> CreateOrderResult.MenuItemNotFound
+                !localItem.isActive -> CreateOrderResult.MenuItemInactive
+                else -> null
+            }
         }
+        menuValidationError?.let { return it }
 
-        val now = clockProvider.nowMillis()
+        val now = timeProvider.now()
 
-        var subtotal = request.items.sumOf { it.menuItem.price * it.quantity }
+        val lineSubtotals = request.items.map { it.menuItem.price * it.quantity }
+        val itemsSubtotal = lineSubtotals.sum()
         val service = if (request.orderType == OrderType.DINE_IN) calculatePercent(
-            subtotal,
+            itemsSubtotal,
             SERVICE_PERCENT
         ) else 0L
-        subtotal += service
+        val subtotal = itemsSubtotal + service
         val discount = request.promoCode
             ?.takeIf { it.isNotBlank() }
             ?.let { promo ->
@@ -78,22 +89,13 @@ class CreateOrderUseCase(
             syncedAt = null,
         )
 
-        val remainingDiscount = mutableMapOf<String, Long>()
-        val remainingTax = mutableMapOf<String, Long>()
-        val itemSubtotals = request.items.map { it.menuItem.id to it.menuItem.price * it.quantity }
-        allocateAmount(
-            discountAmount,
-            itemSubtotals
-        ).forEach { (id, amount) -> remainingDiscount[id] = amount }
+        val lineDiscounts = allocateAmount(discountAmount, lineSubtotals)
+        val lineTaxes = allocateAmount(taxAmount, lineSubtotals)
 
-        allocateAmount(taxAmount, itemSubtotals).forEach { (id, amount) ->
-            remainingTax[id] = amount
-        }
-
-        val orderItems = request.items.map { item ->
-            val lineSubtotal = item.menuItem.price * item.quantity
-            val lineDiscount = remainingDiscount[item.menuItem.id] ?: 0L
-            val lineTax = remainingTax[item.menuItem.id] ?: 0L
+        val orderItems = request.items.mapIndexed { index, item ->
+            val lineSubtotal = lineSubtotals[index]
+            val lineDiscount = lineDiscounts[index]
+            val lineTax = lineTaxes[index]
             OrderItem(
                 id = uuidProvider.randomUuid(),
                 orderId = orderId,
@@ -114,6 +116,7 @@ class CreateOrderUseCase(
 
         return runCatching {
             orderRepo.createOrder(order, orderItems)
+            syncScheduler.scheduleSync()
             CreateOrderResult.Success(orderId)
         }.getOrElse { CreateOrderResult.Failed(it.message ?: "Could not create order.") }
     }
@@ -140,20 +143,21 @@ class CreateOrderUseCase(
 
     private fun allocateAmount(
         totalAmount: Long,
-        weightedLines: List<Pair<String, Long>>
-    ): Map<String, Long> {
-        if (totalAmount <= 0 || weightedLines.isEmpty()) return emptyMap()
-        val totalWeight = weightedLines.sumOf { it.second }.takeIf { it > 0 } ?: return emptyMap()
+        weightedLines: List<Long>
+    ): List<Long> {
+        if (weightedLines.isEmpty()) return emptyList()
+        if (totalAmount <= 0) return List(weightedLines.size) { 0L }
+        val totalWeight = weightedLines.sum().takeIf { it > 0 }
+            ?: return List(weightedLines.size) { 0L }
         var allocated = 0L
-        return weightedLines.mapIndexed { index, (id, weight) ->
-            val amount = if (index == weightedLines.lastIndex) {
+        return weightedLines.mapIndexed { index, weight ->
+            if (index == weightedLines.lastIndex) {
                 totalAmount - allocated
             } else {
                 ((totalAmount * weight).toDouble() / totalWeight).roundToLong()
                     .also { allocated += it }
             }
-            id to amount
-        }.toMap()
+        }
     }
 
     private fun Double.toMinorAmount(): Long = (this * 100.0).roundToLong()

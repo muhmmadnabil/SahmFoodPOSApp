@@ -21,6 +21,11 @@ SELECT *
 FROM menu_items
 WHERE id = ?;
 
+selectByIds:
+SELECT *
+FROM menu_items
+WHERE id IN ?;
+
 countById:
 SELECT COUNT(*)
 FROM menu_items

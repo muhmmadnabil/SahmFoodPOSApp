@@ -9,8 +9,10 @@ import com.sahm.pos.data.mapper.toUserOrNull
 import com.sahm.pos.data.model.RemoteDiscountDocument
 import com.sahm.pos.data.model.RemoteMenuItemDocument
 import com.sahm.pos.data.model.RemoteUserDocument
-import com.sahm.pos.data.remote.RemoteDataException
+import com.sahm.pos.domain.entity.SyncAggregateType
+import com.sahm.pos.domain.entity.SyncOutboxItem
 import com.sahm.pos.domain.entity.User
+import com.sahm.pos.domain.results.SyncUploadResult
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -19,6 +21,9 @@ import kotlin.time.Clock
 private const val USERS_COLLECTION = "users"
 private const val ITEMS_COLLECTION = "items"
 private const val DISCOUNTS_COLLECTION = "discounts"
+private const val ORDER_UPLOADS_COLLECTION = "Order"
+private const val PAYMENT_UPLOADS_COLLECTION = "Payment"
+private const val REFUND_UPLOADS_COLLECTION = "Refund"
 
 internal class FirebaseRemoteDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -64,6 +69,39 @@ internal class FirebaseRemoteDataSource(
                 .map { document -> document.toDiscountDocument() }
         }
     }
+
+    override suspend fun uploadOutboxItem(item: SyncOutboxItem): SyncUploadResult =
+        try {
+            val document = firestore.collection(item.uploadCollectionName())
+                .document(item.idempotencyKey)
+            if (document.get().await().exists()) {
+                SyncUploadResult.DuplicateIdempotencyKey
+            } else {
+                document.set(item.toUploadDocument()).awaitUnit()
+                SyncUploadResult.Success
+            }
+        } catch (exception: FirebaseFirestoreException) {
+            when (exception.code) {
+                FirebaseFirestoreException.Code.ALREADY_EXISTS ->
+                    SyncUploadResult.DuplicateIdempotencyKey
+                FirebaseFirestoreException.Code.DEADLINE_EXCEEDED ->
+                    SyncUploadResult.RetryableError("TIMEOUT", "Request timed out.")
+                FirebaseFirestoreException.Code.UNAVAILABLE ->
+                    SyncUploadResult.RetryableError("NO_INTERNET", "Network is unavailable.")
+                FirebaseFirestoreException.Code.RESOURCE_EXHAUSTED ->
+                    SyncUploadResult.RetryableError("RATE_LIMIT", "Rate limit reached.")
+                FirebaseFirestoreException.Code.INTERNAL ->
+                    SyncUploadResult.RetryableError("HTTP_500", "Temporary server error.")
+                FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                    SyncUploadResult.NonRetryableError("UNAUTHORIZED_CASHIER", "Cashier is not authorized.")
+                FirebaseFirestoreException.Code.INVALID_ARGUMENT ->
+                    SyncUploadResult.NonRetryableError("INVALID_PAYLOAD", "Remote rejected the payload.")
+                else ->
+                    SyncUploadResult.RetryableError("TEMPORARY_FIRESTORE_FAILURE", exception.message.orEmpty())
+            }
+        } catch (throwable: Throwable) {
+            SyncUploadResult.RetryableError("TEMPORARY_API_FAILURE", throwable.message.orEmpty())
+        }
 }
 
 actual fun createRemoteDataSource(): RemoteDataSource = FirebaseRemoteDataSource()
@@ -99,6 +137,24 @@ private fun DocumentSnapshot.toDiscountDocument(): RemoteDiscountDocument =
         startAt = getTimestampMillis("startAt"),
         endAt = getTimestampMillis("endAt"),
     )
+
+private fun SyncOutboxItem.toUploadDocument(): Map<String, Any?> =
+    mapOf(
+        "type" to type.name,
+        "aggregateId" to aggregateId,
+        "aggregateType" to aggregateType.name,
+        "payloadJson" to payloadJson,
+        "idempotencyKey" to idempotencyKey,
+        "createdAt" to createdAt,
+        "uploadedAt" to currentTimestampMillis(),
+    )
+
+private fun SyncOutboxItem.uploadCollectionName(): String =
+    when (aggregateType) {
+        SyncAggregateType.ORDER -> ORDER_UPLOADS_COLLECTION
+        SyncAggregateType.PAYMENT -> PAYMENT_UPLOADS_COLLECTION
+        SyncAggregateType.REFUND -> REFUND_UPLOADS_COLLECTION
+    }
 
 private suspend inline fun <T> mapFirebaseException(block: suspend () -> T): T =
     try {

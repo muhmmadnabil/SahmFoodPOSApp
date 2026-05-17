@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sahm.pos.domain.results.LoginResult
 import com.sahm.pos.domain.usecase.LoginUseCase
+import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -22,7 +23,8 @@ import sahmfoodposapp.composeapp.generated.resources.login_error_phone_invalid
 import sahmfoodposapp.composeapp.generated.resources.login_error_phone_required
 
 class LoginViewModel(
-    private val loginUseCase: LoginUseCase
+    private val loginUseCase: LoginUseCase,
+    private val scheduleSyncIfPendingUseCase: ScheduleSyncIfPendingUseCase? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
@@ -31,13 +33,32 @@ class LoginViewModel(
     private val _effect = MutableSharedFlow<LoginEffect>()
     val effect: SharedFlow<LoginEffect> = _effect.asSharedFlow()
 
+    init {
+        checkPendingSyncBeforeLogin()
+    }
+
     fun onIntent(intent: LoginIntent) {
         when (intent) {
+            LoginIntent.ScreenStarted -> checkPendingSyncBeforeLogin()
             is LoginIntent.PhoneChanged -> onPhoneChanged(intent.phone)
             is LoginIntent.PasswordChanged -> onPasswordChanged(intent.password)
             LoginIntent.TogglePasswordVisibility -> togglePasswordVisibility()
             LoginIntent.SubmitLogin -> submitLogin()
             LoginIntent.SyncClicked -> onSyncClicked()
+        }
+    }
+
+    private fun checkPendingSyncBeforeLogin() {
+        viewModelScope.launch {
+            val counts = scheduleSyncIfPendingUseCase?.invoke() ?: return@launch
+            _state.update {
+                it.copy(
+                    pendingSyncCount = counts.pending,
+                    failedSyncCount = counts.failed,
+                    conflictSyncCount = counts.conflicts,
+                    hasSyncWarning = counts.hasBlockingProblems,
+                )
+            }
         }
     }
 

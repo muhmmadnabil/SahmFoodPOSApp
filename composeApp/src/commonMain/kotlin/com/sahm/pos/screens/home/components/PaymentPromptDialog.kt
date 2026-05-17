@@ -1,12 +1,14 @@
 package com.sahm.pos.screens.home.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,54 +30,59 @@ import sahmfoodposapp.composeapp.generated.resources.home_select_payment_method
 
 @Composable
 internal fun PaymentPromptDialog(
+    modifier: Modifier = Modifier,
     paymentTypes: ImmutableList<PaymentType>,
     selectedPaymentType: PaymentType,
     onPaymentSelected: (PaymentType) -> Unit,
     onConfirmPayment: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = CardBackground,
+    Surface(
+        modifier = modifier,
+        color = CardBackground,
         shape = RoundedCornerShape(18.dp),
-        title = {
+    ) {
+        Column(
+            modifier = Modifier.padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
             Text(
                 text = stringResource(Res.string.home_select_payment_method),
                 color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
-        },
-        text = {
-            Column(Modifier.fillMaxWidth()) {
-                PaymentMethodSelector(
-                    paymentTypes = paymentTypes,
-                    selectedPaymentType = selectedPaymentType,
-                    onPaymentSelected = onPaymentSelected,
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirmPayment,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+
+            PaymentMethodSelector(
+                paymentTypes = paymentTypes,
+                selectedPaymentType = selectedPaymentType,
+                onPaymentSelected = onPaymentSelected,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    text = stringResource(Res.string.home_confirm_payment),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = stringResource(Res.string.home_cancel),
+                        color = TextPrimary,
+                    )
+                }
+
+                Button(
+                    onClick = onConfirmPayment,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.home_confirm_payment),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(Res.string.home_cancel),
-                    color = TextPrimary,
-                )
-            }
-        },
-    )
+        }
+    }
 }

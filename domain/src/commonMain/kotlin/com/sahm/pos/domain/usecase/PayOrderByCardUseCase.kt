@@ -13,6 +13,12 @@ import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.PaymentGatewayResult
 import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.sync.SyncScheduler
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class PayOrderByCardUseCase(
     private val repo: OrderRepo,
@@ -20,6 +26,8 @@ class PayOrderByCardUseCase(
     private val uuidProvider: UUIDProvider,
     private val paymentGateway: PaymentGateway,
     private val receiptPrinter: ReceiptPrinter,
+    private val syncScheduler: SyncScheduler? = null,
+    private val printScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     suspend operator fun invoke(request: CardPaymentRequest): Result<Unit> {
         val details = repo.getOrderDetails(request.orderId)
@@ -30,7 +38,10 @@ class PayOrderByCardUseCase(
         validateCard(request)?.let { return Result.failure(IllegalArgumentException(it)) }
 
         val existingFailedCardPayment = details.payments.lastOrNull {
-            it.type == PaymentType.CARD && it.status in setOf(PaymentStatus.Failed, PaymentStatus.Processing)
+            it.type == PaymentType.CARD && it.status in setOf(
+                PaymentStatus.Failed,
+                PaymentStatus.Processing,
+            )
         }
         val now = clockProvider.nowMillis()
         val paymentId = existingFailedCardPayment?.id ?: uuidProvider.randomUuid()
@@ -54,7 +65,8 @@ class PayOrderByCardUseCase(
         )
         repo.updateOrderPaymentStatus(request.orderId, PaymentStatus.Processing)
 
-        return when (val result = paymentGateway.pay(request.copy(amount = details.order.totalAmount.toInt()))) {
+        return when (val gatewayResult =
+            paymentGateway.pay(request.copy(amount = details.order.totalAmount.toInt()))) {
             is PaymentGatewayResult.Success -> {
                 val completedAt = clockProvider.nowMillis()
                 repo.upsertPayment(
@@ -64,21 +76,28 @@ class PayOrderByCardUseCase(
                         type = PaymentType.CARD,
                         status = PaymentStatus.Paid,
                         amount = details.order.totalAmount,
-                        transactionId = result.transactionId,
-                        gatewayReference = result.gatewayReference,
-                        authorizationCode = result.authorizationCode,
-                        cardBrand = result.cardBrand,
-                        cardLast4 = result.cardLast4,
+                        transactionId = gatewayResult.transactionId,
+                        gatewayReference = gatewayResult.gatewayReference,
+                        authorizationCode = gatewayResult.authorizationCode,
+                        cardBrand = gatewayResult.cardBrand,
+                        cardLast4 = gatewayResult.cardLast4,
                         failureReason = null,
                         createdAt = existingFailedCardPayment?.createdAt ?: now,
                         completedAt = completedAt,
                         syncedAt = null,
                     )
                 )
-                repo.updateOrderAfterPayment(request.orderId, OrderStatus.Paid, PaymentStatus.Paid, completedAt)
-                printOrder(request.orderId)
+                repo.updateOrderAfterPayment(
+                    request.orderId,
+                    OrderStatus.Paid,
+                    PaymentStatus.Paid,
+                    completedAt,
+                )
+                printOrderInBackground(request.orderId)
+                runCatching { syncScheduler?.scheduleSync() }
                 Result.success(Unit)
             }
+
             is PaymentGatewayResult.Failed -> {
                 repo.upsertPayment(
                     Payment(
@@ -91,15 +110,18 @@ class PayOrderByCardUseCase(
                         gatewayReference = null,
                         authorizationCode = null,
                         cardBrand = null,
-                        cardLast4 = request.cardNumber.replace(" ", "").takeLast(4).takeIf { it.length == 4 },
-                        failureReason = result.reason,
+                        cardLast4 = request.cardNumber
+                            .replace(" ", "")
+                            .takeLast(4)
+                            .takeIf { it.length == 4 },
+                        failureReason = gatewayResult.reason,
                         createdAt = existingFailedCardPayment?.createdAt ?: now,
                         completedAt = clockProvider.nowMillis(),
                         syncedAt = null,
                     )
                 )
                 repo.updateOrderPaymentStatus(request.orderId, PaymentStatus.Failed)
-                Result.failure(IllegalStateException(result.reason))
+                Result.failure(IllegalStateException(gatewayResult.reason))
             }
         }
     }
@@ -116,11 +138,27 @@ class PayOrderByCardUseCase(
         return null
     }
 
+    private fun printOrderInBackground(orderId: String) {
+        printScope.launch {
+            try {
+                printOrder(orderId)
+            } finally {
+                runCatching { syncScheduler?.scheduleSync() }
+            }
+        }
+    }
+
     private suspend fun printOrder(orderId: String) {
-        repo.updateOrderPrintStatus(orderId, PrintStatus.Printing)
-        when (receiptPrinter.printOrderReceipt(orderId)) {
-            PrintResult.Success -> repo.updateOrderPrintStatus(orderId, PrintStatus.Printed)
-            is PrintResult.Failed -> repo.updateOrderPrintStatus(orderId, PrintStatus.Failed)
+        try {
+            repo.updateOrderPrintStatus(orderId, PrintStatus.Printing)
+            when (receiptPrinter.printOrderReceipt(orderId)) {
+                PrintResult.Success -> repo.updateOrderPrintStatus(orderId, PrintStatus.Printed)
+                is PrintResult.Failed -> repo.updateOrderPrintStatus(orderId, PrintStatus.Failed)
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Throwable) {
+            runCatching { repo.updateOrderPrintStatus(orderId, PrintStatus.Failed) }
         }
     }
 }

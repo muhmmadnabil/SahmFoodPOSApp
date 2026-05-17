@@ -32,10 +32,10 @@ import kotlin.math.roundToLong
 class HomeViewModel(
     private val getMenuItemsUseCase: GetMenuItemsUseCase,
     private val applyDiscountUseCase: ApplyDiscountUseCase,
-    private val createOrderUseCase: CreateOrderUseCase? = null,
-    private val payOrderByCashUseCase: PayOrderByCashUseCase? = null,
-    private val payOrderByCardUseCase: PayOrderByCardUseCase? = null,
-    private val retryPrintOrderReceiptUseCase: RetryPrintOrderReceiptUseCase? = null,
+    private val createOrderUseCase: CreateOrderUseCase,
+    private val payOrderByCashUseCase: PayOrderByCashUseCase,
+    private val payOrderByCardUseCase: PayOrderByCardUseCase,
+    private val retryPrintOrderReceiptUseCase: RetryPrintOrderReceiptUseCase,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -66,7 +66,11 @@ class HomeViewModel(
             HomeIntent.PayByCardClicked -> payByCard()
             HomeIntent.CardPaymentDismissed -> dismissCardPayment()
             HomeIntent.RetryPrintClicked -> retryPrint()
-            is HomeIntent.RefundItemQuantityChanged -> updateRefundItemQuantity(intent.orderItemId, intent.quantity)
+            is HomeIntent.RefundItemQuantityChanged -> updateRefundItemQuantity(
+                intent.orderItemId,
+                intent.quantity
+            )
+
             HomeIntent.ConfirmRefundClicked -> confirmRefund()
             HomeIntent.OnOrdersClicked -> navigateToOrders()
             HomeIntent.OnSettingsClicked -> navigateToSettings()
@@ -266,22 +270,18 @@ class HomeViewModel(
                 _state.update {
                     it.copy(
                         showPaymentPrompt = true,
-                        isPaymentMethodSheetVisible = true,
                         errorMessage = null,
                     )
                 }
                 return@launch
             }
-            val createOrder = createOrderUseCase
-            if (createOrder == null) {
-                _state.update { it.copy(showPaymentPrompt = true, isPaymentMethodSheetVisible = true) }
-                return@launch
-            }
 
             _state.update { it.copy(isCreatingOrder = true, errorMessage = null) }
-            val result = createOrder(
+            val result = createOrderUseCase(
                 CreateOrderRequest(
-                    items = state.orderItems.map { CreateOrderRequest.Item(it.item, it.quantity) },
+                    items = state.orderItems.map {
+                        CreateOrderRequest.Item(it.item, it.quantity)
+                    },
                     promoCode = state.appliedDiscount?.promoCode,
                     orderType = state.selectedOrderType,
                 )
@@ -292,8 +292,8 @@ class HomeViewModel(
                         createdOrderId = result.orderId,
                         isCreatingOrder = false,
                         showPaymentPrompt = true,
-                        isPaymentMethodSheetVisible = true,
                     )
+
                     else -> current.copy(
                         isCreatingOrder = false,
                         errorMessage = result.toMessage(),
@@ -304,7 +304,7 @@ class HomeViewModel(
     }
 
     private fun dismissPaymentPrompt() {
-        _state.update { it.copy(showPaymentPrompt = false, isPaymentMethodSheetVisible = false) }
+        _state.update { it.copy(showPaymentPrompt = false) }
     }
 
     private fun confirmPayment() {
@@ -315,7 +315,6 @@ class HomeViewModel(
                 it.copy(
                     selectedPaymentMethod = PaymentType.CARD,
                     showPaymentPrompt = false,
-                    isPaymentMethodSheetVisible = false,
                     isCardPaymentSheetVisible = true,
                     errorMessage = null,
                 )
@@ -326,22 +325,16 @@ class HomeViewModel(
     private fun payByCash() {
         viewModelScope.launch {
             val orderId = _state.value.createdOrderId ?: return@launch
-            val payCash = payOrderByCashUseCase
-            if (payCash == null) {
-                clearDraftAfterPayment()
-                return@launch
-            }
             _state.update {
                 it.copy(
                     selectedPaymentMethod = PaymentType.CASH,
                     isPaymentProcessing = true,
                     showPaymentPrompt = false,
-                    isPaymentMethodSheetVisible = false,
-                    isPrinting = true,
                     errorMessage = null,
                 )
             }
-            val result = payCash(orderId)
+
+            val result=payOrderByCashUseCase(orderId)
             _state.update { current ->
                 if (result.isSuccess) {
                     current.copy(
@@ -352,12 +345,10 @@ class HomeViewModel(
                         createdOrderId = null,
                         selectedPaymentMethod = null,
                         isPaymentProcessing = false,
-                        isPrinting = false,
                     ).recalculate()
                 } else {
                     current.copy(
                         isPaymentProcessing = false,
-                        isPrinting = false,
                         errorMessage = result.exceptionOrNull()?.message,
                     )
                 }
@@ -374,7 +365,12 @@ class HomeViewModel(
                 return@launch
             }
             val payCard = payOrderByCardUseCase ?: return@launch
-            _state.update { it.copy(isPaymentProcessing = true, isPrinting = true, errorMessage = null) }
+            _state.update {
+                it.copy(
+                    isPaymentProcessing = true,
+                    errorMessage = null
+                )
+            }
             val result = payCard(
                 CardPaymentRequest(
                     orderId = orderId,
@@ -396,7 +392,6 @@ class HomeViewModel(
                         createdOrderId = null,
                         selectedPaymentMethod = null,
                         isPaymentProcessing = false,
-                        isPrinting = false,
                         isCardPaymentSheetVisible = false,
                         cardNumber = "",
                         expiryMonth = "",
@@ -407,7 +402,6 @@ class HomeViewModel(
                 } else {
                     current.copy(
                         isPaymentProcessing = false,
-                        isPrinting = false,
                         isCardPaymentSheetVisible = true,
                         errorMessage = result.exceptionOrNull()?.message,
                     )
@@ -420,11 +414,10 @@ class HomeViewModel(
         viewModelScope.launch {
             val orderId = _state.value.createdOrderId ?: return@launch
             val retry = retryPrintOrderReceiptUseCase ?: return@launch
-            _state.update { it.copy(isPrinting = true, errorMessage = null) }
+            _state.update { it.copy( errorMessage = null) }
             val result = retry(orderId)
             _state.update {
                 it.copy(
-                    isPrinting = false,
                     errorMessage = result.exceptionOrNull()?.message,
                 )
             }
@@ -457,7 +450,11 @@ class HomeViewModel(
 
     private fun updateRefundItemQuantity(orderItemId: String, quantity: Int) {
         _state.update { state ->
-            state.copy(selectedRefundItems = state.selectedRefundItems + (orderItemId to quantity.coerceAtLeast(0)))
+            state.copy(
+                selectedRefundItems = state.selectedRefundItems + (orderItemId to quantity.coerceAtLeast(
+                    0
+                ))
+            )
         }
     }
 
@@ -473,7 +470,6 @@ class HomeViewModel(
                 isApplyingDiscount = false,
                 appliedDiscount = null,
                 showPaymentPrompt = false,
-                isPaymentMethodSheetVisible = false,
                 isCardPaymentSheetVisible = false,
                 createdOrderId = null,
                 selectedPaymentMethod = null,

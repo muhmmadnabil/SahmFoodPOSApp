@@ -37,6 +37,7 @@ import sahmfoodposapp.composeapp.generated.resources.home_pay_amount
 
 @Composable
 internal fun CardPaymentDialog(
+    modifier: Modifier = Modifier,
     cardNumber: String,
     expiryMonth: String,
     expiryYear: String,
@@ -53,6 +54,7 @@ internal fun CardPaymentDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
+        modifier = modifier,
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
         shape = RoundedCornerShape(18.dp),
@@ -113,7 +115,11 @@ internal fun CardPaymentDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
             ) {
                 Text(
-                    text = stringResource(Res.string.home_pay_amount, total / 100, (total % 100).toString().padStart(2, '0')),
+                    text = stringResource(
+                        Res.string.home_pay_amount,
+                        total / 100,
+                        (total % 100).toString().padStart(2, '0')
+                    ),
                     modifier = Modifier.padding(vertical = 4.dp),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,

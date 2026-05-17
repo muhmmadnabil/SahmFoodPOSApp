@@ -10,6 +10,9 @@ data class SyncUiState(
     val count: Int = 0,
     val skippedCount: Int = 0,
     val lastSyncedCount: Int = 0,
+    val pendingOutboxCount: Long = 0,
+    val failedOutboxCount: Long = 0,
+    val conflictOutboxCount: Long = 0,
 )
 
 sealed interface SyncIntent {
@@ -17,6 +20,7 @@ sealed interface SyncIntent {
     data object SyncItemsClicked : SyncIntent
     data object SyncUsersClicked : SyncIntent
     data object SyncDiscountsClicked : SyncIntent
+    data object ManualOutboxSyncClicked : SyncIntent
 }
 
 sealed interface SyncEffect {

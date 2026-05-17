@@ -9,12 +9,16 @@ import com.sahm.pos.data.remote.RemoteDataException
 import com.sahm.pos.data.remote.RemoteDataSource
 import com.sahm.pos.data.remote.TimeRemoteDataSource
 import com.sahm.pos.data.remote.image.MenuItemImageCache
-import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
+import com.sahm.pos.domain.entity.SyncAggregateType
+import com.sahm.pos.domain.entity.SyncOutboxItem
+import com.sahm.pos.domain.entity.SyncOutboxType
 import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.domain.CurrentEpochMillisProvider
+import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.results.SyncUploadResult
 
 class SyncDataRepoImpl(
     private val sqlDelightLocalDataSource: SqlDelightLocalDataSource,
@@ -175,6 +179,121 @@ class SyncDataRepoImpl(
 
     override suspend fun getDiscountsCount(): Int {
         return sqlDelightLocalDataSource.getDiscountsCount()
+    }
+
+    override suspend fun uploadData(item: SyncOutboxItem): SyncUploadResult {
+        val result = remoteDataSource.uploadOutboxItem(item)
+        if (result == SyncUploadResult.Success || result == SyncUploadResult.DuplicateIdempotencyKey) {
+            markAggregateSynced(item)
+        }
+        return result
+    }
+
+    override suspend fun areDependenciesSatisfied(item: SyncOutboxItem): Boolean =
+        when (item.type) {
+            SyncOutboxType.CREATE_ORDER -> true
+            SyncOutboxType.CREATE_PAYMENT -> sqlDelightLocalDataSource.getPaymentSyncedAt(item.aggregateId) != null
+
+            SyncOutboxType.CREATE_REFUND -> {
+                val dependency = sqlDelightLocalDataSource.getRefundDependencies(item.aggregateId)
+                    ?: return false
+                dependency.order_synced_at != null && dependency.payment_synced_at != null
+            }
+        }
+
+    override suspend fun getSyncPendingItems(limit: Long): List<SyncOutboxItem> =
+        sqlDelightLocalDataSource.getPendingItems(
+            nowMillis = currentEpochMillisProvider.now(),
+            limit = limit
+        )
+
+
+    override suspend fun makeSyncItemInProgress(id: String) {
+        sqlDelightLocalDataSource.markSyncItemInProgress(id, currentEpochMillisProvider.now())
+    }
+
+    override suspend fun resetStaleInProgress(cutoffTime: Long) {
+        sqlDelightLocalDataSource.resetStaleInProgress(
+            nowMillis = currentEpochMillisProvider.now(),
+            expiredBeforeMillis = cutoffTime
+        )
+    }
+
+    override suspend fun markSyncItemSucceeded(id: String) {
+        sqlDelightLocalDataSource.markSyncItemSucceeded(id, currentEpochMillisProvider.now())
+    }
+
+    override suspend fun markSyncItemFailed(
+        id: String,
+        errorCode: String,
+        errorMessage: String,
+    ) {
+        sqlDelightLocalDataSource.markSyncItemFailed(
+            id = id,
+            errorCode = errorCode,
+            errorMessage = errorMessage,
+            nowMillis = currentEpochMillisProvider.now()
+        )
+    }
+
+    override suspend fun markSyncItemConflict(
+        id: String,
+        errorCode: String,
+        errorMessage: String,
+    ) {
+        sqlDelightLocalDataSource.markSyncItemConflict(
+            id = id,
+            errorCode = errorCode,
+            errorMessage = errorMessage,
+            nowMillis = currentEpochMillisProvider.now()
+        )
+    }
+
+    override suspend fun markRetryWaiting(
+        id: String,
+        retryCount: Int,
+        nextAttemptAt: Long,
+        errorCode: String,
+        errorMessage: String
+    ) {
+        sqlDelightLocalDataSource.markRetryWaiting(
+            id = id,
+            retryCount = retryCount,
+            nextAttemptAt = nextAttemptAt,
+            errorCode = errorCode,
+            errorMessage = errorMessage,
+            nowMillis = currentEpochMillisProvider.now()
+        )
+    }
+
+    override suspend fun getCountSyncItemsPending(): Long =
+        sqlDelightLocalDataSource.countSyncItemsPending()
+
+    override suspend fun getCountSyncItemsFailed(): Long = sqlDelightLocalDataSource.countFailed()
+
+
+    override suspend fun getCountSyncItemsConflicts(): Long =
+        sqlDelightLocalDataSource.countConflicts()
+
+
+    private fun markAggregateSynced(item: SyncOutboxItem) {
+        val now = currentEpochMillisProvider.now()
+        when (item.aggregateType) {
+            SyncAggregateType.ORDER -> sqlDelightLocalDataSource.markOrderSynced(
+                now,
+                item.aggregateId
+            )
+
+            SyncAggregateType.PAYMENT -> sqlDelightLocalDataSource.markPaymentSynced(
+                now,
+                item.aggregateId
+            )
+
+            SyncAggregateType.REFUND -> sqlDelightLocalDataSource.markRefundSynced(
+                now,
+                item.aggregateId
+            )
+        }
     }
 
     private fun List<Discount>.hasDuplicatePromoCodes(): Boolean =

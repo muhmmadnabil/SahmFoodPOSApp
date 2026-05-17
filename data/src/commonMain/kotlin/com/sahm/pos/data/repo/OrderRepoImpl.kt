@@ -16,7 +16,16 @@ import com.sahm.pos.domain.entity.Refund
 import com.sahm.pos.domain.entity.RefundDetails
 import com.sahm.pos.domain.entity.RefundItem
 import com.sahm.pos.domain.entity.RefundStatus
+import com.sahm.pos.domain.entity.SyncAggregateType
+import com.sahm.pos.domain.entity.SyncOutboxStatus
+import com.sahm.pos.domain.entity.SyncOutboxType
 import com.sahm.pos.domain.repository.OrderRepo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class OrderRepoImpl(
     private val database: SahmPosDatabase,
@@ -36,56 +45,84 @@ class OrderRepoImpl(
             )
         }.executeAsOneOrNull()
 
+    override suspend fun getMenuItemsByIds(ids: Collection<String>): List<MenuItem> {
+        val distinctIds = ids.distinct()
+        if (distinctIds.isEmpty()) return emptyList()
+        return database.menuItemQueries.selectByIds(distinctIds) { itemId, category, name, description, imageUrl, localImageUrl, price, lastSyncedAt, isActive ->
+            MenuItem(
+                id = itemId,
+                category = category,
+                name = name,
+                description = description,
+                imageUrl = imageUrl,
+                localImageUrl = localImageUrl,
+                price = price,
+                lastSyncedAt = lastSyncedAt,
+                isActive = isActive == 1L,
+            )
+        }.executeAsList()
+    }
+
     override suspend fun getDiscountByPromoCode(promoCode: String): Discount? =
         database.discountQueries.selectByPromoCode(promoCode) { id, code, percent, minValue, maxValue, startAt, endAt, syncedAt ->
             Discount(id, code, percent, minValue, maxValue, startAt, endAt, syncedAt)
         }.executeAsOneOrNull()
 
-    override suspend fun createOrder(order: Order, items: List<OrderItem>) {
-        database.transaction {
-            database.orderFlowQueries.insertOrder(
-                id = order.id,
-                cashier_id = order.cashierId,
-                cashier_name = order.cashierName,
-                subtotal_amount = order.subtotalAmount,
-                tax_amount = order.taxAmount,
-                discount_amount = order.discountAmount,
-                service_amount = order.serviceAmount,
-                total_amount = order.totalAmount,
-                discount_id = order.discountId,
-                discount_promo_code = order.discountPromoCode,
-                discount_percent = order.discountPercent,
-                discount_min_value = order.discountMinValue,
-                discount_max_value = order.discountMaxValue,
-                order_type = order.orderType.name,
-                order_status = order.orderStatus.name,
-                payment_status = order.paymentStatus.name,
-                print_status = order.printStatus.name,
-                created_at = order.createdAt,
-                paid_at = order.paidAt,
-                cancelled_at = order.cancelledAt,
-                synced_at = order.syncedAt,
-            )
-            items.forEach { item ->
-                database.orderFlowQueries.insertOrderItem(
-                    id = item.id,
-                    order_id = item.orderId,
-                    menu_item_id = item.menuItemId,
-                    category = item.category,
-                    name = item.name,
-                    description = item.description,
-                    image_url = item.imageUrl,
-                    local_image_url = item.localImageUrl,
-                    quantity = item.quantity.toLong(),
-                    unit_price = item.unitPrice,
-                    subtotal_amount = item.subtotalAmount,
-                    discount_amount = item.discountAmount,
-                    tax_amount = item.taxAmount,
-                    total_amount = item.totalAmount,
+    override suspend fun createOrder(order: Order, items: List<OrderItem>) =
+        withContext(Dispatchers.IO) {
+            database.transaction {
+                database.orderFlowQueries.insertOrder(
+                    id = order.id,
+                    cashier_id = order.cashierId,
+                    cashier_name = order.cashierName,
+                    subtotal_amount = order.subtotalAmount,
+                    tax_amount = order.taxAmount,
+                    discount_amount = order.discountAmount,
+                    service_amount = order.serviceAmount,
+                    total_amount = order.totalAmount,
+                    discount_id = order.discountId,
+                    discount_promo_code = order.discountPromoCode,
+                    discount_percent = order.discountPercent,
+                    discount_min_value = order.discountMinValue,
+                    discount_max_value = order.discountMaxValue,
+                    order_type = order.orderType.name,
+                    order_status = order.orderStatus.name,
+                    payment_status = order.paymentStatus.name,
+                    print_status = order.printStatus.name,
+                    created_at = order.createdAt,
+                    paid_at = order.paidAt,
+                    cancelled_at = order.cancelledAt,
+                    synced_at = order.syncedAt,
+                )
+
+                items.forEach { item ->
+                    database.orderFlowQueries.insertOrderItem(
+                        id = item.id,
+                        order_id = item.orderId,
+                        menu_item_id = item.menuItemId,
+                        category = item.category,
+                        name = item.name,
+                        description = item.description,
+                        image_url = item.imageUrl,
+                        local_image_url = item.localImageUrl,
+                        quantity = item.quantity.toLong(),
+                        unit_price = item.unitPrice,
+                        subtotal_amount = item.subtotalAmount,
+                        discount_amount = item.discountAmount,
+                        tax_amount = item.taxAmount,
+                        total_amount = item.totalAmount,
+                    )
+                }
+
+                insertOutboxIfAbsent(
+                    type = SyncOutboxType.CREATE_ORDER,
+                    aggregateType = SyncAggregateType.ORDER,
+                    aggregateId = order.id,
+                    payload = order.toPayload(items),
+                    now = order.createdAt,
                 )
             }
         }
-    }
 
     override suspend fun getOrders(): List<Order> =
         database.orderFlowQueries.selectOrders(::mapOrder).executeAsList()
@@ -118,12 +155,14 @@ class OrderRepoImpl(
         paymentStatus: PaymentStatus,
         paidAt: Long?,
     ) {
-        database.orderFlowQueries.updateOrderAfterPayment(
-            orderStatus.name,
-            paymentStatus.name,
-            paidAt,
-            orderId
-        )
+        withContext(Dispatchers.IO) {
+            database.orderFlowQueries.updateOrderAfterPayment(
+                order_status = orderStatus.name,
+                payment_status = paymentStatus.name,
+                paid_at = paidAt,
+                id = orderId
+            )
+        }
     }
 
     override suspend fun updateOrderPaymentStatus(orderId: String, paymentStatus: PaymentStatus) {
@@ -131,7 +170,9 @@ class OrderRepoImpl(
     }
 
     override suspend fun updateOrderPrintStatus(orderId: String, printStatus: PrintStatus) {
-        database.orderFlowQueries.updateOrderPrintStatus(printStatus.name, orderId)
+        database.transaction {
+            database.orderFlowQueries.updateOrderPrintStatus(printStatus.name, orderId)
+        }
     }
 
     override suspend fun updateOrderRefundStatus(
@@ -146,23 +187,34 @@ class OrderRepoImpl(
         )
     }
 
-    override suspend fun upsertPayment(payment: Payment) {
-        database.orderFlowQueries.insertOrReplacePayment(
-            id = payment.id,
-            order_id = payment.orderId,
-            method = payment.type.name,
-            status = payment.status.name,
-            amount = payment.amount,
-            transaction_id = payment.transactionId,
-            gateway_reference = payment.gatewayReference,
-            authorization_code = payment.authorizationCode,
-            card_brand = payment.cardBrand,
-            card_last4 = payment.cardLast4,
-            failure_reason = payment.failureReason,
-            created_at = payment.createdAt,
-            completed_at = payment.completedAt,
-            synced_at = payment.syncedAt,
-        )
+    override suspend fun upsertPayment(payment: Payment) = withContext(Dispatchers.IO) {
+        database.transaction {
+            database.orderFlowQueries.insertOrReplacePayment(
+                id = payment.id,
+                order_id = payment.orderId,
+                method = payment.type.name,
+                status = payment.status.name,
+                amount = payment.amount,
+                transaction_id = payment.transactionId,
+                gateway_reference = payment.gatewayReference,
+                authorization_code = payment.authorizationCode,
+                card_brand = payment.cardBrand,
+                card_last4 = payment.cardLast4,
+                failure_reason = payment.failureReason,
+                created_at = payment.createdAt,
+                completed_at = payment.completedAt,
+                synced_at = payment.syncedAt,
+            )
+            if (payment.status == PaymentStatus.Paid) {
+                insertOutboxIfAbsent(
+                    type = SyncOutboxType.CREATE_PAYMENT,
+                    aggregateType = SyncAggregateType.PAYMENT,
+                    aggregateId = payment.id,
+                    payload = payment.toPayload(),
+                    now = payment.completedAt ?: payment.createdAt,
+                )
+            }
+        }
     }
 
     override suspend fun getCompletedPaymentForOrder(orderId: String): Payment? =
@@ -198,6 +250,13 @@ class OrderRepoImpl(
                     total_refund_amount = item.totalRefundAmount,
                 )
             }
+            insertOutboxIfAbsent(
+                type = SyncOutboxType.CREATE_REFUND,
+                aggregateType = SyncAggregateType.REFUND,
+                aggregateId = refund.id,
+                payload = refund.toPayload(items),
+                now = refund.createdAt,
+            )
         }
     }
 
@@ -379,4 +438,81 @@ class OrderRepoImpl(
         taxAmount = tax_amount,
         totalRefundAmount = total_refund_amount,
     )
+
+    private fun insertOutboxIfAbsent(
+        type: SyncOutboxType,
+        aggregateType: SyncAggregateType,
+        aggregateId: String,
+        payload: JsonObject,
+        now: Long,
+    ) {
+        val idempotencyKey = createSyncIdempotencyKey(type, aggregateId)
+
+        database.syncOutboxQueries.insertOutboxItemOrIgnore(
+            id = idempotencyKey, type = type.name,
+            aggregate_id = aggregateId,
+            aggregate_type = aggregateType.name,
+            payload_json = payload.toString(),
+            idempotency_key = idempotencyKey,
+            status = SyncOutboxStatus.PENDING.name,
+            retry_count = 0,
+            max_retries = 10,
+            next_attempt_at = null,
+            created_at = now,
+            updated_at = now,
+            locked_at = null,
+            last_error_code = null,
+            last_error_message = null
+        )
+    }
+
+    private fun Order.toPayload(items: List<OrderItem>): JsonObject =
+        buildJsonObject {
+            put("orderId", id)
+            put("cashierId", cashierId)
+            put("cashierName", cashierName)
+            put("subtotalAmount", subtotalAmount)
+            put("taxAmount", taxAmount)
+            put("discountAmount", discountAmount)
+            put("serviceAmount", serviceAmount)
+            put("totalAmount", totalAmount)
+            put("orderType", orderType.name)
+            put("orderStatus", orderStatus.name)
+            put("paymentStatus", paymentStatus.name)
+            put("printStatus", printStatus.name)
+            put("createdAt", createdAt)
+            put("itemsCount", items.size)
+        }
+
+    private fun Payment.toPayload(): JsonObject =
+        buildJsonObject {
+            put("paymentId", id)
+            put("orderId", orderId)
+            put("method", type.name)
+            put("status", status.name)
+            put("amount", amount)
+            put("transactionId", transactionId)
+            put("gatewayReference", gatewayReference)
+            put("authorizationCode", authorizationCode)
+            put("cardBrand", cardBrand)
+            put("cardLast4", cardLast4)
+            put("createdAt", createdAt)
+            put("completedAt", completedAt)
+        }
+
+    private fun Refund.toPayload(items: List<RefundItem>): JsonObject =
+        buildJsonObject {
+            put("refundId", id)
+            put("orderId", orderId)
+            put("paymentId", paymentId)
+            put("status", refundStatus.name)
+            put("method", refundType.name)
+            put("amount", amount)
+            put("reason", reason)
+            put("createdAt", createdAt)
+            put("itemsCount", items.size)
+        }
+
+    fun createSyncIdempotencyKey(type: SyncOutboxType, aggregateId: String): String =
+        "${type.name}:$aggregateId"
 }

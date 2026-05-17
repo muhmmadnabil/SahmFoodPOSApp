@@ -38,6 +38,7 @@ kotlin {
             implementation(libs.firebase.firestore)
             implementation(libs.ktor.client.android)
             implementation(libs.sqldelight.androidDriver)
+            implementation(libs.androidx.work.runtime)
         }
 
         iosMain.dependencies {

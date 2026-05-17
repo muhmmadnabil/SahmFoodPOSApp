@@ -10,7 +10,7 @@ import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
-    viewModelOf(::MainViewModel)
+    viewModel { MainViewModel(get(), get()) }
     viewModel {
         HomeViewModel(
             getMenuItemsUseCase = get(),
@@ -21,7 +21,21 @@ val viewModelModule = module {
             retryPrintOrderReceiptUseCase = get(),
         )
     }
-    viewModelOf(::LoginViewModel)
+    viewModel { LoginViewModel(get(), get()) }
     viewModelOf(::OrdersViewModel)
-    viewModelOf(::SyncViewModel)
+    viewModel {
+        SyncViewModel(
+            syncMenuItemsUseCase = get(),
+            syncUsersUseCase = get(),
+            syncDiscountsUseCase = get(),
+            getUsersCountUseCase = get(),
+            getMenuItemsCountUseCase = get(),
+            getMenuItemsLastSyncUseCase = get(),
+            getUsersLastSyncAtUseCase = get(),
+            getDiscountsLastSyncAtUseCase = get(),
+            getDiscountsCountUseCase = get(),
+            getSyncOutboxCountsUseCase = get(),
+            manualSyncOutboxUseCase = get(),
+        )
+    }
 }
