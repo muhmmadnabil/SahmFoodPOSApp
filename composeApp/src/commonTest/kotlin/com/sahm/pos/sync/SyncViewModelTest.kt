@@ -3,15 +3,17 @@ package com.sahm.pos.sync
 import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
-import com.sahm.pos.domain.entity.TimeSyncInfo
 import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.data.remote.TimeRemoteDataSource
-import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
-import com.sahm.pos.domain.ClockProvider
-import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
+import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
+import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
+import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase
+import com.sahm.pos.domain.usecase.GetMenuItemsLastSyncUseCase
+import com.sahm.pos.domain.usecase.GetUsersCountUseCase
+import com.sahm.pos.domain.usecase.GetUsersLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
+import com.sahm.pos.screens.sync.SyncDetailType
 import com.sahm.pos.screens.syncDetails.SyncEffect
 import com.sahm.pos.screens.syncDetails.SyncIntent
 import com.sahm.pos.screens.syncDetails.SyncUiState
@@ -54,7 +56,7 @@ class SyncViewModelTest {
     fun initialStateHasIsSyncingItemsFalse() = runTest {
         val viewModel = viewModel()
 
-        assertEquals(SyncUiState(isSyncingItems = false), viewModel.state.value)
+        assertEquals(SyncUiState(), viewModel.state.value)
     }
 
     @Test
@@ -63,10 +65,10 @@ class SyncViewModelTest {
             syncDataRepo = FakeSyncDataRepo(activeItems = listOf(item, item.copy(id = "fries"))),
         )
 
-        viewModel.onIntent(SyncIntent.ScreenOpened)
+        viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Items))
         advanceUntilIdle()
 
-        assertEquals(2, viewModel.state.value.localItemCount)
+        assertEquals(2, viewModel.state.value.count)
     }
 
     @Test
@@ -75,11 +77,11 @@ class SyncViewModelTest {
             syncDataRepo = FakeSyncDataRepo(userCount = 3, lastUsersSyncAt = 1234),
         )
 
-        viewModel.onIntent(SyncIntent.ScreenOpened)
+        viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Users))
         advanceUntilIdle()
 
-        assertEquals(3, viewModel.state.value.localUserCount)
-        assertEquals(1234, viewModel.state.value.lastUserSyncAt)
+        assertEquals(3, viewModel.state.value.count)
+        assertEquals(1234, viewModel.state.value.lastSyncAt)
     }
 
     @Test
@@ -90,7 +92,7 @@ class SyncViewModelTest {
         viewModel.onIntent(SyncIntent.SyncItemsClicked)
         runCurrent()
 
-        assertTrue(viewModel.state.value.isSyncingItems)
+        assertTrue(viewModel.state.value.isSyncing)
         repo.waitForSync?.complete(Unit)
         advanceUntilIdle()
     }
@@ -102,7 +104,7 @@ class SyncViewModelTest {
         viewModel.onIntent(SyncIntent.SyncItemsClicked)
         advanceUntilIdle()
 
-        assertFalse(viewModel.state.value.isSyncingItems)
+        assertFalse(viewModel.state.value.isSyncing)
     }
 
     @Test
@@ -131,7 +133,7 @@ class SyncViewModelTest {
         advanceUntilIdle()
 
         assertTrue(effects.contains(SyncEffect.ShowMessage(Res.string.sync_users_success)))
-        assertFalse(viewModel.state.value.isSyncingUsers)
+        assertFalse(viewModel.state.value.isSyncing)
     }
 
     @Test
@@ -233,13 +235,12 @@ class SyncViewModelTest {
             syncMenuItemsUseCase = SyncMenuItemsUseCase(syncDataRepo),
             syncUsersUseCase = SyncUsersUseCase(syncDataRepo),
             syncDiscountsUseCase = SyncDiscountsUseCase(syncDataRepo),
-            checkPhoneTimeUseCase = CheckPhoneTimeUseCase(
-                timeRemoteDataSource = FakeTimeRemoteDataSource(),
-                timeLocalDataSource = FakeTimeLocalDataSource(),
-                clockProvider = FakeClockProvider(),
-            ),
-            getMenuItemsUseCase = GetMenuItemsUseCase(syncDataRepo),
-            syncDataRepo = syncDataRepo,
+            getUsersCountUseCase = GetUsersCountUseCase(syncDataRepo),
+            getMenuItemsCountUseCase = GetMenuItemsCountUseCase(syncDataRepo),
+            getMenuItemsLastSyncUseCase = GetMenuItemsLastSyncUseCase(syncDataRepo),
+            getUsersLastSyncAtUseCase = GetUsersLastSyncAtUseCase(syncDataRepo),
+            getDiscountsLastSyncAtUseCase = GetDiscountsLastSyncAtUseCase(syncDataRepo),
+            getDiscountsCountUseCase = GetDiscountsCountUseCase(syncDataRepo),
         )
     }
 
@@ -276,25 +277,14 @@ class SyncViewModelTest {
 
         override suspend fun getUserCount(): Long = userCount
 
-        override suspend fun getMenuItemCount(): Long = itemCount
+        override suspend fun getMenuItemCount(): Long =
+            itemCount.takeIf { it > 0 } ?: activeItems.size.toLong()
 
         override suspend fun getLastUsersSyncAt(): Long? = lastUsersSyncAt
 
         override suspend fun getLastMenuItemsSyncAt(): Long? = lastItemsSyncAt
     }
 
-    private class FakeTimeRemoteDataSource : TimeRemoteDataSource {
-        override suspend fun getUnixTimeMillis(): Result<Long> = Result.success(1_000)
-    }
-
-    private class FakeTimeLocalDataSource : TimeLocalDataSource {
-        override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) = Unit
-        override suspend fun getTimeSyncInfo(): TimeSyncInfo? = null
-    }
-
-    private class FakeClockProvider : ClockProvider {
-        override fun nowMillis(): Long = 1_000
-    }
     private companion object {
         val item = MenuItem(
             id = "burger_animal_style",

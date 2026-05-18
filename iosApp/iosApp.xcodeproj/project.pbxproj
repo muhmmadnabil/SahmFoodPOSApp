@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		1A2B3C4D5E6F700100000001 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F700100000011 /* iOSApp.swift */; };
 		1A2B3C4D5E6F700100000002 /* ComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F700100000012 /* ComposeView.swift */; };
+		1A2B3C4D5E6F700100000040 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F700100000041 /* GoogleService-Info.plist */; };
+		E81EF577C5CE69C967637B57 /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8449B157336FFBB41082B7CB /* Pods_iosApp.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -16,6 +18,11 @@
 		1A2B3C4D5E6F700100000011 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F700100000012 /* ComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F700100000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A2B3C4D5E6F700100000041 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		34C280E02FBA882C00594880 /* Podfile */ = {isa = PBXFileReference; lastKnownFileType = text; path = Podfile; sourceTree = "<group>"; };
+		8449B157336FFBB41082B7CB /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8E9D323DC1AFDFBCFE9E870 /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
+		D063B5645F56D4FD8E5ECF41 /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -23,26 +30,39 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E81EF577C5CE69C967637B57 /* Pods_iosApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0DB5E826DFB7399DB0D55867 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8449B157336FFBB41082B7CB /* Pods_iosApp.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		1A2B3C4D5E6F700100000005 = {
 			isa = PBXGroup;
 			children = (
 				1A2B3C4D5E6F700100000006 /* iosApp */,
 				1A2B3C4D5E6F700100000007 /* Products */,
+				78B5CF6FAFDB5BBF7E5FFAA0 /* Pods */,
+				0DB5E826DFB7399DB0D55867 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
 		1A2B3C4D5E6F700100000006 /* iosApp */ = {
 			isa = PBXGroup;
 			children = (
+				34C280E02FBA882C00594880 /* Podfile */,
 				1A2B3C4D5E6F700100000011 /* iOSApp.swift */,
 				1A2B3C4D5E6F700100000012 /* ComposeView.swift */,
 				1A2B3C4D5E6F700100000017 /* Info.plist */,
+				1A2B3C4D5E6F700100000041 /* GoogleService-Info.plist */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -55,6 +75,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		78B5CF6FAFDB5BBF7E5FFAA0 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				B8E9D323DC1AFDFBCFE9E870 /* Pods-iosApp.debug.xcconfig */,
+				D063B5645F56D4FD8E5ECF41 /* Pods-iosApp.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -62,6 +91,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1A2B3C4D5E6F700100000020 /* Build configuration list for PBXNativeTarget "iosApp" */;
 			buildPhases = (
+				92311E7FD6238F90882826DE /* [CP] Check Pods Manifest.lock */,
 				1A2B3C4D5E6F700100000030 /* Build ComposeApp framework */,
 				1A2B3C4D5E6F700100000009 /* Sources */,
 				1A2B3C4D5E6F700100000004 /* Frameworks */,
@@ -114,6 +144,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A2B3C4D5E6F700100000040 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,7 +168,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "cd \"$SRCROOT/..\" \n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+		};
+		92311E7FD6238F90882826DE /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-iosApp-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -156,6 +209,7 @@
 /* Begin XCBuildConfiguration section */
 		1A2B3C4D5E6F700100000015 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B8E9D323DC1AFDFBCFE9E870 /* Pods-iosApp.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -271,8 +325,10 @@
 		};
 		1A2B3C4D5E6F700100000021 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B8E9D323DC1AFDFBCFE9E870 /* Pods-iosApp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -284,7 +340,9 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = iosApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sahm POS";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -308,8 +366,10 @@
 		};
 		1A2B3C4D5E6F700100000022 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D063B5645F56D4FD8E5ECF41 /* Pods-iosApp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -321,7 +381,9 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = iosApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sahm POS";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -353,7 +415,7 @@
 				1A2B3C4D5E6F700100000016 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		1A2B3C4D5E6F700100000020 /* Build configuration list for PBXNativeTarget "iosApp" */ = {
 			isa = XCConfigurationList;
@@ -362,7 +424,7 @@
 				1A2B3C4D5E6F700100000022 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};

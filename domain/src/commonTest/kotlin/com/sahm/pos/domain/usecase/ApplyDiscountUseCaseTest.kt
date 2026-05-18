@@ -1,11 +1,11 @@
 package com.sahm.pos.domain.usecase
 
 import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.results.ApplyDiscountResult
 import com.sahm.pos.domain.results.SyncResult
 import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.domain.entity.TimeSyncInfo
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -77,7 +77,7 @@ class ApplyDiscountUseCaseTest {
     private fun useCase(discount: Discount?, now: Long = 2_000) =
         ApplyDiscountUseCase(
             FakeSyncDataRepo(discount),
-            AppTimeProvider(FakeTimeLocalDataSource(), ClockProvider { now }),
+            GetAppTimeUseCase(FakeSyncDataRepo(discount), ClockProvider { now }),
         )
 
     private class FakeSyncDataRepo(private val discount: Discount?) : SyncDataRepo {
@@ -92,11 +92,6 @@ class ApplyDiscountUseCaseTest {
         override suspend fun getMenuItemCount(): Long = 0
         override suspend fun getLastUsersSyncAt(): Long? = null
         override suspend fun getLastMenuItemsSyncAt(): Long? = null
-    }
-
-    private class FakeTimeLocalDataSource : TimeLocalDataSource {
-        override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) = Unit
-        override suspend fun getTimeSyncInfo(): TimeSyncInfo? = null
     }
 
     private fun discount(

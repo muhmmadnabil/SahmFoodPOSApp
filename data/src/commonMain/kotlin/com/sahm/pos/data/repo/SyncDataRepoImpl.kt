@@ -24,8 +24,8 @@ import com.sahm.pos.domain.results.SyncUploadResult
 class SyncDataRepoImpl(
     private val sqlDelightLocalDataSource: SqlDelightLocalDataSource,
     private val remoteDataSource: RemoteDataSource,
-    private val dataStoreLocalDataSource: DataStoreLocalDataSource,
-    private val timeRemoteDataSource: TimeRemoteDataSource,
+    private val dataStoreLocalDataSource: DataStoreLocalDataSource = NoOpDataStoreLocalDataSource,
+    private val timeRemoteDataSource: TimeRemoteDataSource = NoOpTimeRemoteDataSource,
     private val currentEpochMillisProvider: CurrentEpochMillisProvider,
     private val menuItemImageCache: MenuItemImageCache,
 ) : SyncDataRepo {
@@ -305,4 +305,13 @@ class SyncDataRepoImpl(
 
     private fun List<Discount>.hasDuplicatePromoCodes(): Boolean =
         map { it.promoCode }.let { promoCodes -> promoCodes.size != promoCodes.toSet().size }
+}
+
+private object NoOpDataStoreLocalDataSource : DataStoreLocalDataSource {
+    override suspend fun saveCurrentUser(currentUser: com.sahm.pos.domain.entity.CurrentUser) = Unit
+    override suspend fun getCurrentUser(): com.sahm.pos.domain.entity.CurrentUser? = null
+}
+
+private object NoOpTimeRemoteDataSource : TimeRemoteDataSource {
+    override suspend fun getUnixTimeMillis(): Result<Long> = Result.failure(RemoteDataException.Unknown)
 }

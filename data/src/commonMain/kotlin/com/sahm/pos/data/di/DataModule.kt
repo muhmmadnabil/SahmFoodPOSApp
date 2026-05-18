@@ -11,65 +11,69 @@ import com.sahm.pos.data.local.createDatabaseDriver
 import com.sahm.pos.data.local.database.SahmPosDatabase
 import com.sahm.pos.data.printing.createReceiptPrinter
 import com.sahm.pos.data.remote.RemoteDataSource
+import com.sahm.pos.data.remote.TimeRemoteDataSource
 import com.sahm.pos.data.remote.TimeRemoteDataSourceImpl
 import com.sahm.pos.data.remote.createRemoteDataSource
 import com.sahm.pos.data.remote.image.createMenuItemImageCache
 import com.sahm.pos.data.repo.AuthRepoImpl
 import com.sahm.pos.data.repo.OrderRepoImpl
 import com.sahm.pos.data.repo.SyncDataRepoImpl
+import com.sahm.pos.data.sync.SyncOutboxProcessorImpl
+import com.sahm.pos.data.sync.createNetworkMonitor
 import com.sahm.pos.data.sync.createSyncScheduler
-import com.sahm.pos.domain.repository.AuthRepo
-import com.sahm.pos.domain.repository.OrderRepo
-import com.sahm.pos.domain.repository.SyncDataRepo
-import com.sahm.pos.data.remote.TimeRemoteDataSource
-import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
-import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
 import com.sahm.pos.domain.ClockProvider
-import com.sahm.pos.domain.usecase.CreateOrderUseCase
-import com.sahm.pos.domain.usecase.CreateRefundUseCase
 import com.sahm.pos.domain.CurrentEpochMillisProvider
 import com.sahm.pos.domain.CurrentTimestampProvider
 import com.sahm.pos.domain.FakePaymentGateway
 import com.sahm.pos.domain.PaymentGateway
-import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
-import com.sahm.pos.domain.usecase.GetOrderSyncStatsUseCase
-import com.sahm.pos.domain.usecase.GetOrdersUseCase
-import com.sahm.pos.domain.usecase.GetPaymentSyncStatsUseCase
-import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
+import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.SystemClockProvider
+import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
+import com.sahm.pos.domain.SystemCurrentTimestampProvider
+import com.sahm.pos.domain.UUIDProvider
+import com.sahm.pos.domain.repository.AuthRepo
+import com.sahm.pos.domain.repository.OrderRepo
+import com.sahm.pos.domain.repository.SyncDataRepo
+import com.sahm.pos.domain.sync.NetworkMonitor
+import com.sahm.pos.domain.sync.SyncOutboxProcessor
+import com.sahm.pos.domain.sync.SyncScheduler
+import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
+import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
+import com.sahm.pos.domain.usecase.CreateOrderUseCase
+import com.sahm.pos.domain.usecase.CreateRefundUseCase
+import com.sahm.pos.domain.usecase.GetAppTimeUseCase
+import com.sahm.pos.domain.usecase.GetCurrentUserUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsCountUseCase
 import com.sahm.pos.domain.usecase.GetDiscountsLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsCountUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsLastSyncUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
+import com.sahm.pos.domain.usecase.GetOrderDetailsUseCase
+import com.sahm.pos.domain.usecase.GetOrderSyncStatsUseCase
+import com.sahm.pos.domain.usecase.GetOrdersUseCase
+import com.sahm.pos.domain.usecase.GetPaymentSyncStatsUseCase
+import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
+import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
 import com.sahm.pos.domain.usecase.GetUsersCountUseCase
 import com.sahm.pos.domain.usecase.GetUsersLastSyncAtUseCase
 import com.sahm.pos.domain.usecase.HasCurrentUserUseCase
 import com.sahm.pos.domain.usecase.HasUsersUseCase
 import com.sahm.pos.domain.usecase.LoginUseCase
+import com.sahm.pos.domain.usecase.LogoutUseCase
+import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
+import com.sahm.pos.domain.usecase.ObserveSyncTriggersUseCase
 import com.sahm.pos.domain.usecase.PayOrderByCardUseCase
 import com.sahm.pos.domain.usecase.PayOrderByCashUseCase
-import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.usecase.ProcessSyncOutboxUseCase
 import com.sahm.pos.domain.usecase.RefundByCardUseCase
 import com.sahm.pos.domain.usecase.RefundByCashUseCase
 import com.sahm.pos.domain.usecase.RetryPrintOrderReceiptUseCase
 import com.sahm.pos.domain.usecase.RetryPrintRefundReceiptUseCase
+import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
 import com.sahm.pos.domain.usecase.SyncDiscountsUseCase
 import com.sahm.pos.domain.usecase.SyncMenuItemsUseCase
+import com.sahm.pos.domain.usecase.SyncPendingOutboxUseCase
 import com.sahm.pos.domain.usecase.SyncUsersUseCase
-import com.sahm.pos.domain.SystemClockProvider
-import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
-import com.sahm.pos.domain.SystemCurrentTimestampProvider
-import com.sahm.pos.domain.UUIDProvider
-import com.sahm.pos.data.sync.SyncOutboxProcessorImpl
-import com.sahm.pos.domain.sync.SyncOutboxProcessor
-import com.sahm.pos.domain.sync.SyncScheduler
-import com.sahm.pos.domain.usecase.GetAppTimeUseCase
-import com.sahm.pos.domain.usecase.GetCurrentUserUseCase
-import com.sahm.pos.domain.usecase.GetSyncOutboxCountsUseCase
-import com.sahm.pos.domain.usecase.LogoutUseCase
-import com.sahm.pos.domain.usecase.ManualSyncOutboxUseCase
-import com.sahm.pos.domain.usecase.ProcessSyncOutboxUseCase
-import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -89,6 +93,7 @@ fun dataModule(platformContext: PlatformContext) = module {
     single<AuthRepo> { AuthRepoImpl(get(), get()) }
     single<OrderRepo> { OrderRepoImpl(get()) }
     single<SyncScheduler> { createSyncScheduler(platformContext) }
+    single<NetworkMonitor> { createNetworkMonitor(platformContext) }
     single<SyncOutboxProcessor> { SyncOutboxProcessorImpl(get(), get()) }
     single { SyncDataRepoImpl(get(), get(), get(), get(), get(), get()) }
     single<SyncDataRepo> { get<SyncDataRepoImpl>() }
@@ -112,8 +117,8 @@ fun dataModule(platformContext: PlatformContext) = module {
     factory { GetOrderDetailsUseCase(get()) }
     factory { GetOrdersUseCase(get()) }
     factory { CreateRefundUseCase(get(), get(), get(), get()) }
-    factory { RefundByCashUseCase(get(), get(), get()) }
-    factory { RefundByCardUseCase(get(), get(), get(), get()) }
+    factory { RefundByCashUseCase(get(), get(), get(), get()) }
+    factory { RefundByCardUseCase(get(), get(), get(), get(), get()) }
     factory { RetryPrintRefundReceiptUseCase(get(), get()) }
     factory { GetRefundableItemsUseCase(get()) }
     factory { LoginUseCase(get(), get()) }
@@ -134,4 +139,9 @@ fun dataModule(platformContext: PlatformContext) = module {
     factory { ScheduleSyncIfPendingUseCase(get(), get()) }
     factory { ManualSyncOutboxUseCase(get()) }
     factory { ProcessSyncOutboxUseCase(get()) }
+    factory<SyncPendingOutboxUseCase> {
+        val repo = get<SyncDataRepo>()
+        SyncPendingOutboxUseCase(get()) { repo.getCountSyncItemsPending() }
+    }
+    single { ObserveSyncTriggersUseCase(get(), get()) }
 }

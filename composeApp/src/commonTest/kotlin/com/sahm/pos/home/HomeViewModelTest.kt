@@ -1,6 +1,8 @@
 package com.sahm.pos.home
 
 import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.CurrentEpochMillisProvider
+import com.sahm.pos.domain.FakePaymentGateway
 import com.sahm.pos.domain.ReceiptPrinter
 import com.sahm.pos.domain.UUIDProvider
 import com.sahm.pos.domain.entity.CurrentUser
@@ -28,9 +30,13 @@ import com.sahm.pos.domain.usecase.ApplyDiscountUseCase
 import com.sahm.pos.domain.usecase.CreateOrderUseCase
 import com.sahm.pos.domain.usecase.GetAppTimeUseCase
 import com.sahm.pos.domain.usecase.GetMenuItemsUseCase
+import com.sahm.pos.domain.usecase.PayOrderByCardUseCase
 import com.sahm.pos.domain.usecase.PayOrderByCashUseCase
+import com.sahm.pos.domain.usecase.RetryPrintOrderReceiptUseCase
 import com.sahm.pos.domain.results.PrintResult
 import com.sahm.pos.domain.results.SyncResult
+import com.sahm.pos.domain.sync.SyncReason
+import com.sahm.pos.domain.sync.SyncScheduler
 import com.sahm.pos.screens.home.HomeConstants
 import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeViewModel
@@ -278,6 +284,57 @@ class HomeViewModelTest {
         assertEquals(null, viewModel.state.value.createdOrderId)
     }
 
+    @Test
+    fun cardPaymentAcceptsTwoDigitExpiryYearAndClearsOrder() = runTest {
+        val repo = FakeOrderRepo(menuItems)
+        val viewModel = orderFlowViewModel(repo)
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(fries.id))
+        viewModel.onIntent(HomeIntent.PaymentTypeSelected(PaymentType.CARD))
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ConfirmPaymentClicked)
+        viewModel.onIntent(HomeIntent.CardNumberChanged("4242 4242 4242 4242"))
+        viewModel.onIntent(HomeIntent.ExpiryMonthChanged("12"))
+        viewModel.onIntent(HomeIntent.ExpiryYearChanged("26"))
+        viewModel.onIntent(HomeIntent.CvvChanged("123"))
+        viewModel.onIntent(HomeIntent.CardHolderNameChanged("Mona"))
+        viewModel.onIntent(HomeIntent.PayByCardClicked)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state.orderItems.isEmpty())
+        assertEquals(false, state.isCardPaymentSheetVisible)
+        assertEquals(null, state.errorMessage)
+        assertEquals(listOf("order-1"), repo.paidOrderIds)
+    }
+
+    @Test
+    fun failedCardPaymentKeepsDialogOpenWithErrorMessage() = runTest {
+        val viewModel = orderFlowViewModel(FakeOrderRepo(menuItems))
+
+        viewModel.onIntent(HomeIntent.ScreenOpened)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ItemAdded(fries.id))
+        viewModel.onIntent(HomeIntent.PaymentTypeSelected(PaymentType.CARD))
+        viewModel.onIntent(HomeIntent.MakeOrderClicked)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.ConfirmPaymentClicked)
+        viewModel.onIntent(HomeIntent.CardNumberChanged("5555"))
+        viewModel.onIntent(HomeIntent.ExpiryMonthChanged("12"))
+        viewModel.onIntent(HomeIntent.ExpiryYearChanged("26"))
+        viewModel.onIntent(HomeIntent.CvvChanged("123"))
+        viewModel.onIntent(HomeIntent.CardHolderNameChanged("Mona"))
+        viewModel.onIntent(HomeIntent.PayByCardClicked)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(true, state.isCardPaymentSheetVisible)
+        assertEquals("Unsupported test card", state.errorMessage)
+    }
+
     private fun TestScope.viewModel(
         items: List<MenuItem>,
         discounts: List<Discount> = emptyList(),
@@ -285,11 +342,38 @@ class HomeViewModelTest {
 
     private fun TestScope.viewModel(repo: FakeSyncDataRepo): HomeViewModel {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val orderRepo = FakeOrderRepo(menuItems)
+        val clockProvider = ClockProvider { 2_000 }
+        val uuidProvider = SequenceUuidProvider("order-1", "order-item-1", "payment-1")
         return HomeViewModel(
             getMenuItemsUseCase = GetMenuItemsUseCase(repo),
             applyDiscountUseCase = ApplyDiscountUseCase(
                 syncDataRepo = repo,
-                getAppTimeUseCase = GetAppTimeUseCase(repo, ClockProvider { 2_000 }),
+                getAppTimeUseCase = GetAppTimeUseCase(repo, clockProvider),
+            ),
+            createOrderUseCase = CreateOrderUseCase(
+                orderRepo = orderRepo,
+                authRepo = FakeAuthRepo,
+                uuidProvider = uuidProvider,
+                timeProvider = CurrentEpochMillisProvider { 2_000 },
+                syncScheduler = FakeSyncScheduler,
+            ),
+            payOrderByCashUseCase = PayOrderByCashUseCase(
+                repo = orderRepo,
+                clockProvider = clockProvider,
+                uuidProvider = uuidProvider,
+                receiptPrinter = FakeReceiptPrinter,
+            ),
+            payOrderByCardUseCase = PayOrderByCardUseCase(
+                repo = orderRepo,
+                clockProvider = clockProvider,
+                uuidProvider = uuidProvider,
+                paymentGateway = FakePaymentGateway(),
+                receiptPrinter = FakeReceiptPrinter,
+            ),
+            retryPrintOrderReceiptUseCase = RetryPrintOrderReceiptUseCase(
+                repo = orderRepo,
+                receiptPrinter = FakeReceiptPrinter,
             ),
         )
     }
@@ -308,12 +392,24 @@ class HomeViewModelTest {
                 orderRepo = repo,
                 authRepo = FakeAuthRepo,
                 uuidProvider = uuidProvider,
-                clockProvider = clockProvider,
+                timeProvider = CurrentEpochMillisProvider { 2_000 },
+                syncScheduler = FakeSyncScheduler,
             ),
             payOrderByCashUseCase = PayOrderByCashUseCase(
                 repo = repo,
                 clockProvider = clockProvider,
                 uuidProvider = uuidProvider,
+                receiptPrinter = FakeReceiptPrinter,
+            ),
+            payOrderByCardUseCase = PayOrderByCardUseCase(
+                repo = repo,
+                clockProvider = clockProvider,
+                uuidProvider = uuidProvider,
+                paymentGateway = FakePaymentGateway(),
+                receiptPrinter = FakeReceiptPrinter,
+            ),
+            retryPrintOrderReceiptUseCase = RetryPrintOrderReceiptUseCase(
+                repo = repo,
                 receiptPrinter = FakeReceiptPrinter,
             ),
         )
@@ -455,6 +551,10 @@ class HomeViewModelTest {
         override suspend fun printOrderReceipt(orderId: String): PrintResult = PrintResult.Success
 
         override suspend fun printRefundReceipt(refundId: String): PrintResult = PrintResult.Success
+    }
+
+    private object FakeSyncScheduler : SyncScheduler {
+        override fun scheduleSync(reason: SyncReason) = Unit
     }
 
     private class SequenceUuidProvider(

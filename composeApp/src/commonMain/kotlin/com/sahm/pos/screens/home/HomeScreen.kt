@@ -127,6 +127,7 @@ fun HomeScreen(
                 cardHolderName = state.cardHolderName,
                 total = state.total,
                 isProcessing = state.isPaymentProcessing,
+                errorMessage = state.errorMessage,
                 onCardNumberChanged = { onIntent(HomeIntent.CardNumberChanged(it)) },
                 onExpiryMonthChanged = { onIntent(HomeIntent.ExpiryMonthChanged(it)) },
                 onExpiryYearChanged = { onIntent(HomeIntent.ExpiryYearChanged(it)) },

@@ -16,7 +16,7 @@ class AppTimeProviderTest {
 
     @Test
     fun noSavedOffsetUsesPhoneTime() = runTest {
-        val provider = AppTimeProvider(FakeTimeLocalDataSource(null), ClockProvider { 10_000 })
+        val provider = GetAppTimeUseCase(FakeSyncDataRepo(null), ClockProvider { 10_000 })
 
         assertEquals(10_000, provider.nowMillis())
     }
@@ -29,15 +29,14 @@ class AppTimeProviderTest {
     }
 
     private fun provider(phoneTime: Long, offset: Long) =
-        AppTimeProvider(
-            FakeTimeLocalDataSource(TimeSyncInfo(offset, 0, 0, 0)),
+        GetAppTimeUseCase(
+            FakeSyncDataRepo(TimeSyncInfo(offset, 0, 0, 0)),
             ClockProvider { phoneTime },
         )
 
-    private class FakeTimeLocalDataSource(
+    private class FakeSyncDataRepo(
         private val info: TimeSyncInfo?,
-    ) : TimeLocalDataSource {
-        override suspend fun saveTimeSyncInfo(info: TimeSyncInfo) = Unit
+    ) : com.sahm.pos.domain.repository.SyncDataRepo {
         override suspend fun getTimeSyncInfo(): TimeSyncInfo? = info
     }
 }

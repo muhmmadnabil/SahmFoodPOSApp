@@ -1,7 +1,6 @@
 package com.sahm.pos.data.remote
 
 import com.sahm.pos.domain.DataError
-import com.sahm.pos.domain.repository.TimeRemoteException
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -91,7 +90,18 @@ class TimeRemoteDataSourceImplTest {
     }
 
     private fun assertFailure(error: DataError.Remote, result: Result<Long>) {
-        val exception = result.exceptionOrNull() as TimeRemoteException
-        assertEquals(error, exception.error)
+        val exception = result.exceptionOrNull() as RemoteDataException
+        assertEquals(error, exception.toDataError())
     }
+
+    private fun RemoteDataException.toDataError(): DataError.Remote =
+        when (this) {
+            RemoteDataException.NoInternet -> DataError.Remote.NO_INTERNET_CONNECTION
+            RemoteDataException.RequestTimeout -> DataError.Remote.REQUEST_TIMEOUT
+            RemoteDataException.PermissionDenied -> DataError.Remote.PERMISSION_DENIED
+            RemoteDataException.SerializationError -> DataError.Remote.SERIALIZATION_ERROR
+            RemoteDataException.InvalidRemoteData -> DataError.Remote.INVALID_REMOTE_DATA
+            RemoteDataException.ServerError -> DataError.Remote.SERVER_ERROR
+            RemoteDataException.Unknown -> DataError.Remote.UNKNOWN
+        }
 }

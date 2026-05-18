@@ -13,6 +13,7 @@ import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.AuthRepo
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.CreateOrderResult
+import com.sahm.pos.domain.sync.SyncReason
 import com.sahm.pos.domain.sync.SyncScheduler
 import kotlin.math.roundToLong
 
@@ -116,7 +117,7 @@ class CreateOrderUseCase(
 
         return runCatching {
             orderRepo.createOrder(order, orderItems)
-            syncScheduler.scheduleSync()
+            runCatching { syncScheduler.scheduleSync(SyncReason.OrderCreated) }
             CreateOrderResult.Success(orderId)
         }.getOrElse { CreateOrderResult.Failed(it.message ?: "Could not create order.") }
     }

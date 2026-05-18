@@ -10,6 +10,7 @@ import com.sahm.pos.domain.entity.PaymentType
 import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.sync.SyncReason
 import com.sahm.pos.domain.sync.SyncScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +53,7 @@ class PayOrderByCashUseCase(
         )
         repo.updateOrderAfterPayment(orderId, OrderStatus.Paid, PaymentStatus.Paid, now)
         printOrderInBackground(orderId)
-        runCatching { syncScheduler?.scheduleSync() }
+        runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
         return Result.success(Unit)
     }
 
@@ -61,7 +62,7 @@ class PayOrderByCashUseCase(
             try {
                 printOrder(orderId)
             } finally {
-                runCatching { syncScheduler?.scheduleSync() }
+                runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
             }
         }
     }

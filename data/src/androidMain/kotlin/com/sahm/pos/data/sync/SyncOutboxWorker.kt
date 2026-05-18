@@ -13,15 +13,33 @@ import com.sahm.pos.data.remote.TimeRemoteDataSourceImpl
 import com.sahm.pos.data.remote.createRemoteDataSource
 import com.sahm.pos.data.remote.image.createMenuItemImageCache
 import com.sahm.pos.data.repo.SyncDataRepoImpl
-import com.sahm.pos.domain.SystemClockProvider
 import com.sahm.pos.domain.SystemCurrentEpochMillisProvider
-import com.sahm.pos.domain.results.SyncProcessorResult
+import com.sahm.pos.domain.sync.SyncReason
+import com.sahm.pos.domain.sync.SyncResult
+import com.sahm.pos.domain.usecase.SyncPendingOutboxUseCase
 
 class SyncOutboxWorker(
     appContext: Context,
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
+        val reason = inputData.getString(SyncReasonInputKey)
+            ?.let { runCatching { SyncReason.valueOf(it) }.getOrNull() }
+            ?: SyncReason.Manual
+
+        return try {
+            when (createSyncPendingOutboxUseCase().invoke()) {
+                SyncResult.Success -> Result.success()
+                SyncResult.NothingToSync -> Result.success()
+                is SyncResult.TransientFailure -> Result.retry()
+                is SyncResult.PermanentFailure -> Result.success()
+            }
+        } catch (_: Throwable) {
+            Result.retry()
+        }
+    }
+
+    private fun createSyncPendingOutboxUseCase(): SyncPendingOutboxUseCase {
         val platformContext = PlatformContext(applicationContext)
         val database = SahmPosDatabase(createDatabaseDriver(platformContext))
         val localDataSource = SqlDelightLocalDataSourceImpl(database)
@@ -39,11 +57,8 @@ class SyncOutboxWorker(
             repo = repo,
             clockProvider = epochMillisProvider,
         )
-
-        return when (processor.processPending()) {
-            SyncProcessorResult.Success -> Result.success()
-            SyncProcessorResult.NeedsRetry -> Result.retry()
-            is SyncProcessorResult.Failure -> Result.failure()
+        return SyncPendingOutboxUseCase(processor) {
+            repo.getCountSyncItemsPending()
         }
     }
 }

@@ -10,6 +10,7 @@ import com.sahm.pos.domain.entity.RefundItem
 import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.CreateRefundResult
+import com.sahm.pos.domain.sync.SyncReason
 import com.sahm.pos.domain.sync.SyncScheduler
 import kotlin.math.floor
 
@@ -62,7 +63,7 @@ class CreateRefundUseCase(
 
         return runCatching {
             repo.createRefund(refund, materializedItems)
-            syncScheduler?.scheduleSync()
+            runCatching { syncScheduler?.scheduleSync(SyncReason.RefundCreated) }
             CreateRefundResult.Success(refundId)
         }.getOrElse { CreateRefundResult.Failed(it.message ?: "Could not create refund.") }
     }

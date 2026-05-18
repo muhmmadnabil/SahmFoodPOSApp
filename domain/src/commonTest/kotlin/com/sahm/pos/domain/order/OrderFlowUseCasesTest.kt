@@ -6,40 +6,45 @@ import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.Order
 import com.sahm.pos.domain.entity.OrderDetails
 import com.sahm.pos.domain.entity.OrderItem
+import com.sahm.pos.domain.entity.OrderStatus
 import com.sahm.pos.domain.entity.Payment
-import com.sahm.pos.domain.entity.PaymentMethod
 import com.sahm.pos.domain.entity.PaymentStatus
+import com.sahm.pos.domain.entity.PaymentType
 import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.entity.Refund
 import com.sahm.pos.domain.entity.RefundDetails
 import com.sahm.pos.domain.entity.RefundItem
-import com.sahm.pos.domain.entity.RefundMethod
 import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.entity.User
 import com.sahm.pos.domain.repository.AuthRepo
 import com.sahm.pos.domain.repository.OrderRepo
-import com.sahm.pos.domain.usecase.CardPaymentRequest
+import com.sahm.pos.domain.CurrentEpochMillisProvider
+import com.sahm.pos.domain.entity.CardPaymentRequest
 import com.sahm.pos.domain.ClockProvider
-import com.sahm.pos.domain.usecase.CreateOrderRequest
-import com.sahm.pos.domain.usecase.CreateOrderResult
+import com.sahm.pos.domain.entity.CreateOrderRequest
+import com.sahm.pos.domain.results.CreateOrderResult
 import com.sahm.pos.domain.usecase.CreateOrderUseCase
-import com.sahm.pos.domain.usecase.CreateRefundRequest
-import com.sahm.pos.domain.usecase.CreateRefundResult
+import com.sahm.pos.domain.entity.CreateRefundRequest
+import com.sahm.pos.domain.results.CreateRefundResult
 import com.sahm.pos.domain.usecase.CreateRefundUseCase
 import com.sahm.pos.domain.FakePaymentGateway
 import com.sahm.pos.domain.usecase.GetRefundableItemsUseCase
-import com.sahm.pos.domain.usecase.PaymentGatewayResult
+import com.sahm.pos.domain.results.PaymentGatewayResult
 import com.sahm.pos.domain.usecase.PayOrderByCardUseCase
 import com.sahm.pos.domain.usecase.PayOrderByCashUseCase
-import com.sahm.pos.domain.usecase.PrintResult
+import com.sahm.pos.domain.results.PrintResult
 import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.UUIDProvider
 import com.sahm.pos.domain.usecase.RefundByCashUseCase
-import com.sahm.pos.domain.usecase.RefundSelection
-import com.sahm.pos.domain.usecase.UuidProvider
+import com.sahm.pos.domain.entity.RefundSelection
+import com.sahm.pos.domain.sync.SyncReason
+import com.sahm.pos.domain.sync.SyncScheduler
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class OrderFlowUseCasesTest {
 
@@ -112,7 +117,14 @@ class OrderFlowUseCasesTest {
         createOrderUseCase(repository)(CreateOrderRequest(listOf(CreateOrderRequest.Item(burger, 1))))
         val printer = FakePrinter(orderResult = PrintResult.Failed("paper out"))
 
-        val result = PayOrderByCashUseCase(repository, ClockProvider { 2_500 }, SequenceUuidProvider("payment-1"), printer)("order-1")
+        val result = PayOrderByCashUseCase(
+            repo = repository,
+            clockProvider = ClockProvider { 2_500 },
+            uuidProvider = SequenceUuidProvider("payment-1"),
+            receiptPrinter = printer,
+            printScope = this,
+        )("order-1")
+        advanceUntilIdle()
 
         assertEquals(Unit, result.getOrThrow())
         val details = requireNotNull(repository.orderDetails("order-1"))
@@ -120,7 +132,7 @@ class OrderFlowUseCasesTest {
         assertEquals(PaymentStatus.Paid, details.order.paymentStatus)
         assertEquals(PrintStatus.Failed, details.order.printStatus)
         assertEquals(1, printer.orderPrints)
-        assertEquals(PaymentMethod.Cash, details.payments.single().method)
+        assertEquals(PaymentType.CASH, details.payments.single().type)
         assertEquals(details.order.totalAmount, details.payments.single().amount)
     }
 
@@ -130,7 +142,7 @@ class OrderFlowUseCasesTest {
         createOrderUseCase(repository)(CreateOrderRequest(listOf(CreateOrderRequest.Item(burger, 1))))
 
         val declined = PayOrderByCardUseCase(
-            repository = repository,
+            repo = repository,
             clockProvider = ClockProvider { 2_500 },
             uuidProvider = SequenceUuidProvider("card-payment-1"),
             paymentGateway = FakePaymentGateway(),
@@ -164,6 +176,26 @@ class OrderFlowUseCasesTest {
     }
 
     @Test
+    fun cardPaymentAcceptsTwoDigitExpiryYear() = runTest {
+        val repository = FakeOrderRepo(menuItems = listOf(burger))
+        createOrderUseCase(repository)(CreateOrderRequest(listOf(CreateOrderRequest.Item(burger, 1))))
+
+        val result = PayOrderByCardUseCase(
+            repo = repository,
+            clockProvider = ClockProvider { 2_500 },
+            uuidProvider = SequenceUuidProvider("card-payment-1"),
+            paymentGateway = FakePaymentGateway(),
+            receiptPrinter = FakePrinter(),
+        )(
+            card("4242 4242 4242 4242").copy(expiryYear = "26")
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(OrderStatus.Paid, repository.orderDetails("order-1")?.order?.orderStatus)
+        assertEquals(PaymentStatus.Paid, repository.orderDetails("order-1")?.order?.paymentStatus)
+    }
+
+    @Test
     fun refundableItemsAndCashRefundUseSavedLineAmounts() = runTest {
         val repository = FakeOrderRepo(menuItems = listOf(burger))
         createOrderUseCase(repository)(CreateOrderRequest(listOf(CreateOrderRequest.Item(burger, 3))))
@@ -179,7 +211,7 @@ class OrderFlowUseCasesTest {
             CreateRefundRequest(
                 orderId = "order-1",
                 selections = listOf(RefundSelection(orderItemId, quantity = 1)),
-                method = RefundMethod.Cash,
+                type = PaymentType.CASH,
                 reason = "Wrong item",
             )
         )
@@ -204,7 +236,8 @@ class OrderFlowUseCasesTest {
         orderRepo = repository,
         authRepo = FakeAuthRepo(currentUser),
         uuidProvider = SequenceUuidProvider("order-1", "order-item-1", "order-item-2", "order-item-3"),
-        clockProvider = ClockProvider { now },
+        timeProvider = CurrentEpochMillisProvider { now },
+        syncScheduler = FakeSyncScheduler,
     )
 
     private fun card(number: String) = CardPaymentRequest(
@@ -232,11 +265,15 @@ class OrderFlowUseCasesTest {
 
 private class SequenceUuidProvider(
     private vararg val values: String,
-) : UuidProvider {
+) : UUIDProvider {
     private var index = 0
 
     override fun randomUuid(): String =
         values.getOrNull(index++) ?: "uuid-$index"
+}
+
+private object FakeSyncScheduler : SyncScheduler {
+    override fun scheduleSync(reason: SyncReason) = Unit
 }
 
 private class FakeAuthRepo(

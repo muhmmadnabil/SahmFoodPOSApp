@@ -1,5 +1,5 @@
 package com.sahm.pos.domain.sync
 
 interface SyncScheduler {
-    fun scheduleSync()
+    fun scheduleSync(reason: SyncReason)
 }

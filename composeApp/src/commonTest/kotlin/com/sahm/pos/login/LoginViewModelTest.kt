@@ -207,7 +207,7 @@ class LoginViewModelTest {
     @Test
     fun givenArabicDigitsPhone_whenSubmitLogin_thenNormalizedPhoneIsUsed() = runTest {
         val viewModel = viewModel()
-        viewModel.onIntent(LoginIntent.PhoneChanged("٠٢١٠١٢٣٤٥٦٧٨"))
+        viewModel.onIntent(LoginIntent.PhoneChanged("٢٠١٠١٢٣٤٥٦٧٨"))
         viewModel.onIntent(LoginIntent.PasswordChanged(validPassword))
 
         viewModel.onIntent(LoginIntent.SubmitLogin)
@@ -355,7 +355,7 @@ class LoginViewModelTest {
     }
 
     private companion object {
-        const val validPhone = "021012345678"
+        const val validPhone = "201012345678"
         const val validPassword = "1234567"
 
         val cashier = User(

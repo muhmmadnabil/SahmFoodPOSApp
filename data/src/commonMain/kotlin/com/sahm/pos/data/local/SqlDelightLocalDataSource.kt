@@ -26,14 +26,14 @@ interface SqlDelightLocalDataSource {
     suspend fun getAllDiscounts(): List<Discount>
     suspend fun getDiscountByPromoCode(promoCode: String): Discount?
     suspend fun getDiscountCount(): Long
-    suspend fun getLastDiscountsSyncAt(): Long?
-    suspend fun getDiscountsCount(): Int
+    suspend fun getLastDiscountsSyncAt(): Long? = null
+    suspend fun getDiscountsCount(): Int = 0
 
     //Upload Sync Outbox
-    suspend fun insertOutboxItem(item: SyncOutboxItem)
-    suspend fun getPendingItems(nowMillis: Long, limit: Long): List<SyncOutboxItem>
-    suspend fun markSyncItemInProgress(id: String, nowMillis: Long)
-    suspend fun markSyncItemSucceeded(id: String, nowMillis: Long)
+    suspend fun insertOutboxItem(item: SyncOutboxItem) = Unit
+    suspend fun getPendingItems(nowMillis: Long, limit: Long): List<SyncOutboxItem> = emptyList()
+    suspend fun markSyncItemInProgress(id: String, nowMillis: Long) = Unit
+    suspend fun markSyncItemSucceeded(id: String, nowMillis: Long) = Unit
     suspend fun markRetryWaiting(
         id: String,
         retryCount: Int,
@@ -41,33 +41,33 @@ interface SqlDelightLocalDataSource {
         errorCode: String,
         errorMessage: String,
         nowMillis: Long,
-    )
+    ) = Unit
 
     suspend fun markSyncItemFailed(
         id: String,
         errorCode: String,
         errorMessage: String,
         nowMillis: Long
-    )
+    ) = Unit
 
     suspend fun markSyncItemConflict(
         id: String,
         errorCode: String,
         errorMessage: String,
         nowMillis: Long
-    )
+    ) = Unit
 
-    suspend fun resetStaleInProgress(expiredBeforeMillis: Long, nowMillis: Long)
-    suspend fun countSyncItemsPending(): Long
-    suspend fun countConflicts(): Long
-    suspend fun countFailed(): Long
-    suspend fun isAggregateSynced(aggregateType: SyncAggregateType, aggregateId: String): Boolean
-    fun markOrderSynced(time: Long, aggregateId: String)
-    fun markPaymentSynced(time: Long, aggregateId: String)
-    fun markRefundSynced(time: Long, aggregateId: String)
-    fun getRefundDependencies(aggregateId: String): SelectRefundDependencies?
-    fun getPaymentSyncedAt(aggregateId: String): Long?
+    suspend fun resetStaleInProgress(expiredBeforeMillis: Long, nowMillis: Long) = Unit
+    suspend fun countSyncItemsPending(): Long = 0
+    suspend fun countConflicts(): Long = 0
+    suspend fun countFailed(): Long = 0
+    suspend fun isAggregateSynced(aggregateType: SyncAggregateType, aggregateId: String): Boolean = true
+    fun markOrderSynced(time: Long, aggregateId: String) = Unit
+    fun markPaymentSynced(time: Long, aggregateId: String) = Unit
+    fun markRefundSynced(time: Long, aggregateId: String) = Unit
+    fun getRefundDependencies(aggregateId: String): SelectRefundDependencies? = null
+    fun getPaymentSyncedAt(aggregateId: String): Long? = null
     fun getPaymentOrderSyncedAt(paymentId: String): Long? = null
-    suspend fun getOrderSyncStats(): SyncAggregateStats
-    suspend fun getPaymentSyncStats(): SyncAggregateStats
+    suspend fun getOrderSyncStats(): SyncAggregateStats = SyncAggregateStats.Empty
+    suspend fun getPaymentSyncStats(): SyncAggregateStats = SyncAggregateStats.Empty
 }

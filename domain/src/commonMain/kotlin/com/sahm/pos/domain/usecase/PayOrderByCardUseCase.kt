@@ -13,6 +13,7 @@ import com.sahm.pos.domain.entity.PrintStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.PaymentGatewayResult
 import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.sync.SyncReason
 import com.sahm.pos.domain.sync.SyncScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -94,7 +95,7 @@ class PayOrderByCardUseCase(
                     completedAt,
                 )
                 printOrderInBackground(request.orderId)
-                runCatching { syncScheduler?.scheduleSync() }
+                runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
                 Result.success(Unit)
             }
 
@@ -129,13 +130,23 @@ class PayOrderByCardUseCase(
     private fun validateCard(request: CardPaymentRequest): String? {
         val number = request.cardNumber.replace(" ", "")
         if (number.isBlank() || number.any { !it.isDigit() }) return "Invalid card number"
-        if (request.cvv.length !in 3..4 || request.cvv.any { !it.isDigit() }) return "Invalid CVV"
-        val month = request.expiryMonth.toIntOrNull() ?: return "Invalid expiry"
+        val cvv = request.cvv.trim()
+        if (cvv.length !in 3..4 || cvv.any { !it.isDigit() }) return "Invalid CVV"
+        val month = request.expiryMonth.trim().toIntOrNull() ?: return "Invalid expiry"
         if (month !in 1..12) return "Invalid expiry"
-        val year = request.expiryYear.toIntOrNull() ?: return "Invalid expiry"
+        val year = normalizeExpiryYear(request.expiryYear).toIntOrNull() ?: return "Invalid expiry"
         if (year < 2026) return "Invalid expiry"
         if (request.cardHolderName.isBlank()) return "Card holder name is required"
         return null
+    }
+
+    private fun normalizeExpiryYear(value: String): String {
+        val trimmed = value.trim()
+        return if (trimmed.length == 2 && trimmed.all { it.isDigit() }) {
+            "20$trimmed"
+        } else {
+            trimmed
+        }
     }
 
     private fun printOrderInBackground(orderId: String) {
@@ -143,7 +154,7 @@ class PayOrderByCardUseCase(
             try {
                 printOrder(orderId)
             } finally {
-                runCatching { syncScheduler?.scheduleSync() }
+                runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
             }
         }
     }

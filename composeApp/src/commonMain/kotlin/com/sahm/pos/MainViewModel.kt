@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sahm.pos.domain.results.CheckPhoneTimeResult
 import com.sahm.pos.domain.usecase.CheckPhoneTimeUseCase
+import com.sahm.pos.domain.usecase.ObserveSyncTriggersUseCase
 import com.sahm.pos.domain.usecase.ScheduleSyncIfPendingUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val checkPhoneTimeUseCase: CheckPhoneTimeUseCase,
+    private val observeSyncTriggersUseCase: ObserveSyncTriggersUseCase,
     private val scheduleSyncIfPendingUseCase: ScheduleSyncIfPendingUseCase,
 ) : ViewModel() {
     private val _isTimeCorrect = MutableStateFlow(true)
@@ -21,9 +23,19 @@ class MainViewModel(
     private var checkPhoneTimeJob: Job? = null
 
     init {
+        observeSyncTriggersUseCase.start(viewModelScope)
+        checkPendingSync()
+    }
+
+    private fun checkPendingSync() {
         viewModelScope.launch {
             scheduleSyncIfPendingUseCase()
         }
+    }
+
+    override fun onCleared() {
+        observeSyncTriggersUseCase.stop()
+        super.onCleared()
     }
 
     fun checkPhoneTime() {

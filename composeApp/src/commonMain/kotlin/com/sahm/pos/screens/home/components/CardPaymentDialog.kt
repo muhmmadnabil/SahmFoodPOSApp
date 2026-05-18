@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sahm.pos.theme.CardBackground
+import com.sahm.pos.theme.ErrorRed
 import com.sahm.pos.theme.PrimaryOrange
 import com.sahm.pos.theme.TextPrimary
 import org.jetbrains.compose.resources.stringResource
@@ -45,6 +46,7 @@ internal fun CardPaymentDialog(
     cardHolderName: String,
     total: Long,
     isProcessing: Boolean,
+    errorMessage: String?,
     onCardNumberChanged: (String) -> Unit,
     onExpiryMonthChanged: (String) -> Unit,
     onExpiryYearChanged: (String) -> Unit,
@@ -105,6 +107,14 @@ internal fun CardPaymentDialog(
                     label = stringResource(Res.string.home_card_holder_name),
                     keyboardType = KeyboardType.Text,
                 )
+                errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        color = ErrorRed,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         },
         confirmButton = {

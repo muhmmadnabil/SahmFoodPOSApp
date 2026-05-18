@@ -6,6 +6,7 @@ import com.sahm.pos.data.repo.OrderRepoImpl
 import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.Order
 import com.sahm.pos.domain.entity.OrderItem
+import com.sahm.pos.domain.entity.OrderStatus
 import com.sahm.pos.domain.entity.PaymentStatus
 import com.sahm.pos.domain.entity.PrintStatus
 import kotlinx.coroutines.test.runTest

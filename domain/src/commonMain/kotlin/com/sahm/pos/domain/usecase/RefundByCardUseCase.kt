@@ -10,12 +10,15 @@ import com.sahm.pos.domain.entity.PaymentType
 import com.sahm.pos.domain.entity.RefundStatus
 import com.sahm.pos.domain.repository.OrderRepo
 import com.sahm.pos.domain.results.RefundGatewayResult
+import com.sahm.pos.domain.sync.SyncReason
+import com.sahm.pos.domain.sync.SyncScheduler
 
 class RefundByCardUseCase(
     private val repo: OrderRepo,
     private val clockProvider: ClockProvider,
     private val paymentGateway: PaymentGateway,
     private val receiptPrinter: ReceiptPrinter,
+    private val syncScheduler: SyncScheduler? = null,
 ) {
     suspend operator fun invoke(refundId: String): Result<Unit> {
         val details = repo.getRefundDetails(refundId)
@@ -38,6 +41,7 @@ class RefundByCardUseCase(
                 repo.updateRefundStatus(refundId, RefundStatus.Completed, clockProvider.nowMillis())
                 updateAggregateStatus(details.refund.orderId)
                 receiptPrinter.printRefundReceipt(refundId)
+                runCatching { syncScheduler?.scheduleSync(SyncReason.RefundCreated) }
                 Result.success(Unit)
             }
 

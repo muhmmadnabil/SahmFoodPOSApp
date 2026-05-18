@@ -358,22 +358,21 @@ class HomeViewModel(
                 _state.update { it.copy(errorMessage = message) }
                 return@launch
             }
-            val payCard = payOrderByCardUseCase ?: return@launch
             _state.update {
                 it.copy(
                     isPaymentProcessing = true,
                     errorMessage = null
                 )
             }
-            val result = payCard(
+            val result = payOrderByCardUseCase(
                 CardPaymentRequest(
                     orderId = orderId,
                     amount = state.total.toInt(),
-                    cardNumber = state.cardNumber,
-                    expiryMonth = state.expiryMonth,
-                    expiryYear = state.expiryYear,
-                    cvv = state.cvv,
-                    cardHolderName = state.cardHolderName,
+                    cardNumber = state.cardNumber.trim(),
+                    expiryMonth = state.expiryMonth.trim(),
+                    expiryYear = normalizeExpiryYear(state.expiryYear),
+                    cvv = state.cvv.trim(),
+                    cardHolderName = state.cardHolderName.trim(),
                 )
             )
             _state.update { current ->
@@ -407,9 +406,8 @@ class HomeViewModel(
     private fun retryPrint() {
         viewModelScope.launch {
             val orderId = _state.value.createdOrderId ?: return@launch
-            val retry = retryPrintOrderReceiptUseCase ?: return@launch
-            _state.update { it.copy( errorMessage = null) }
-            val result = retry(orderId)
+            _state.update { it.copy(errorMessage = null) }
+            val result = retryPrintOrderReceiptUseCase(orderId)
             _state.update {
                 it.copy(
                     errorMessage = result.exceptionOrNull()?.message,
@@ -419,39 +417,49 @@ class HomeViewModel(
     }
 
     private fun dismissCardPayment() {
-        _state.update { it.copy(isCardPaymentSheetVisible = false) }
+        _state.update { it.copy(isCardPaymentSheetVisible = false, errorMessage = null) }
     }
 
     private fun updateCardNumber(value: String) {
-        _state.update { it.copy(cardNumber = value) }
+        _state.update { it.copy(cardNumber = value, errorMessage = null) }
     }
 
     private fun updateExpiryMonth(value: String) {
-        _state.update { it.copy(expiryMonth = value) }
+        _state.update { it.copy(expiryMonth = value, errorMessage = null) }
     }
 
     private fun updateExpiryYear(value: String) {
-        _state.update { it.copy(expiryYear = value) }
+        _state.update { it.copy(expiryYear = value, errorMessage = null) }
     }
 
     private fun updateCvv(value: String) {
-        _state.update { it.copy(cvv = value) }
+        _state.update { it.copy(cvv = value, errorMessage = null) }
     }
 
     private fun updateCardHolderName(value: String) {
-        _state.update { it.copy(cardHolderName = value) }
+        _state.update { it.copy(cardHolderName = value, errorMessage = null) }
     }
 
     private fun validateCardFields(state: HomeUiState): String? {
         val number = state.cardNumber.replace(" ", "")
         if (number.isBlank() || number.any { !it.isDigit() }) return "Invalid card number"
-        if (state.cvv.length !in 3..4 || state.cvv.any { !it.isDigit() }) return "Invalid CVV"
-        val month = state.expiryMonth.toIntOrNull() ?: return "Invalid expiry"
+        val cvv = state.cvv.trim()
+        if (cvv.length !in 3..4 || cvv.any { !it.isDigit() }) return "Invalid CVV"
+        val month = state.expiryMonth.trim().toIntOrNull() ?: return "Invalid expiry"
         if (month !in 1..12) return "Invalid expiry"
-        val year = state.expiryYear.toIntOrNull() ?: return "Invalid expiry"
+        val year = normalizeExpiryYear(state.expiryYear).toIntOrNull() ?: return "Invalid expiry"
         if (year < 2026) return "Invalid expiry"
         if (state.cardHolderName.isBlank()) return "Card holder name is required"
         return null
+    }
+
+    private fun normalizeExpiryYear(value: String): String {
+        val trimmed = value.trim()
+        return if (trimmed.length == 2 && trimmed.all { it.isDigit() }) {
+            "20$trimmed"
+        } else {
+            trimmed
+        }
     }
 
     private fun CreateOrderResult.toMessage(): String =
