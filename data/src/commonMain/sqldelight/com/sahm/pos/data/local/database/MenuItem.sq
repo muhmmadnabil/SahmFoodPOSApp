@@ -1,0 +1,73 @@
+CREATE TABLE menu_items (
+    id TEXT NOT NULL PRIMARY KEY,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    local_image_url TEXT,
+    price INTEGER NOT NULL,
+    last_synced_at INTEGER,
+    is_active INTEGER NOT NULL
+);
+
+selectActive:
+SELECT *
+FROM menu_items
+WHERE is_active = 1
+ORDER BY category, name;
+
+selectById:
+SELECT *
+FROM menu_items
+WHERE id = ?;
+
+selectByIds:
+SELECT *
+FROM menu_items
+WHERE id IN ?;
+
+countById:
+SELECT COUNT(*)
+FROM menu_items
+WHERE id = ?;
+
+countAll:
+SELECT COUNT(*)
+FROM menu_items;
+
+lastSyncAt:
+SELECT MAX(last_synced_at)
+FROM menu_items
+WHERE last_synced_at IS NOT NULL;
+
+insertOrIgnore:
+INSERT OR IGNORE INTO menu_items(
+    id,
+    category,
+    name,
+    description,
+    image_url,
+    local_image_url,
+    price,
+    last_synced_at,
+    is_active
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE menu_items
+SET
+    category = ?,
+    name = ?,
+    description = ?,
+    image_url = ?,
+    local_image_url = ?,
+    price = ?,
+    last_synced_at = ?,
+    is_active = ?
+WHERE id = ?;
+
+markMissingInactive:
+UPDATE menu_items
+SET is_active = 0
+WHERE id NOT IN ?;

@@ -1,9 +1,10 @@
 package com.sahm.pos.data.repo
 
-import com.sahm.pos.data.local.CurrentUserLocalDataSource
-import com.sahm.pos.data.local.LocalDataSource
-import com.sahm.pos.data.remote.RemoteDataSource
+import com.sahm.pos.data.local.DataStoreLocalDataSource
+import com.sahm.pos.data.local.SqlDelightLocalDataSource
+import com.sahm.pos.domain.entity.Discount
 import com.sahm.pos.domain.entity.CurrentUser
+import com.sahm.pos.domain.entity.MenuItem
 import com.sahm.pos.domain.entity.User
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -28,19 +29,6 @@ class AuthRepoImplTest {
         val result = repo.getUserByPhone("01000000000")
 
         assertNull(result)
-    }
-
-    @Test
-    fun givenRemoteUsers_whenSyncUsers_thenUpsertsUsersLocally() = runTest {
-        val local = FakeLocalDataSource()
-        val repo = authRepo(
-            localDataSource = local,
-            remoteDataSource = FakeRemoteDataSource(users = listOf(user)),
-        )
-
-        repo.syncUsers()
-
-        assertEquals(listOf(user), local.upsertedUsers)
     }
 
     @Test
@@ -89,14 +77,12 @@ class AuthRepoImplTest {
     private fun authRepo(
         localDataSource: FakeLocalDataSource = FakeLocalDataSource(),
         currentUserLocalDataSource: FakeCurrentUserLocalDataSource = FakeCurrentUserLocalDataSource(),
-        remoteDataSource: RemoteDataSource = FakeRemoteDataSource(),
     ) = AuthRepoImpl(
-        localDataSource = localDataSource,
-        currentUserLocalDataSource = currentUserLocalDataSource,
-        remoteDataSource = remoteDataSource,
+        sqlDelightLocalDataSource = localDataSource,
+        dataStoreLocalDataSource = currentUserLocalDataSource,
     )
 
-    private class FakeLocalDataSource : LocalDataSource {
+    private class FakeLocalDataSource : SqlDelightLocalDataSource {
         var upsertedUsers: List<User>? = null
         var updatedLastLoginUserId: String? = null
         var updatedLastLoginTimestamp: String? = null
@@ -107,6 +93,10 @@ class AuthRepoImplTest {
             upsertedUsers = users
         }
 
+        override suspend fun replaceUsersSnapshot(users: List<User>) {
+            upsertedUsers = users
+        }
+
         override suspend fun getUserByPhone(phone: String): User? =
             user.takeIf { it.phone == phone }
 
@@ -114,11 +104,35 @@ class AuthRepoImplTest {
             updatedLastLoginUserId = userId
             updatedLastLoginTimestamp = timestamp
         }
+
+        override suspend fun getUserCount(): Long = 0
+
+        override suspend fun getLastUsersSyncAt(): Long? = null
+
+        override suspend fun replaceMenuItemsSnapshot(items: List<MenuItem>) = Unit
+
+        override suspend fun getActiveMenuItems(): List<MenuItem> = emptyList()
+
+        override suspend fun getMenuItemById(id: String): MenuItem? = null
+
+        override suspend fun getMenuItemCountById(id: String): Long = 0
+
+        override suspend fun getMenuItemCount(): Long = 0
+
+        override suspend fun getLastMenuItemsSyncAt(): Long? = null
+
+        override suspend fun replaceAllDiscounts(discounts: List<Discount>) = Unit
+
+        override suspend fun getAllDiscounts(): List<Discount> = emptyList()
+
+        override suspend fun getDiscountByPromoCode(promoCode: String): Discount? = null
+
+        override suspend fun getDiscountCount(): Long = 0
     }
 
     private class FakeCurrentUserLocalDataSource(
         private val currentUser: CurrentUser? = null,
-    ) : CurrentUserLocalDataSource {
+    ) : DataStoreLocalDataSource {
         var savedCurrentUser: CurrentUser? = null
 
         override suspend fun saveCurrentUser(currentUser: CurrentUser) {
@@ -127,12 +141,6 @@ class AuthRepoImplTest {
 
         override suspend fun getCurrentUser(): CurrentUser? =
             savedCurrentUser ?: currentUser
-    }
-
-    private class FakeRemoteDataSource(
-        private val users: List<User> = emptyList(),
-    ) : RemoteDataSource {
-        override suspend fun getUsers(): List<User> = users
     }
 
     private companion object {
@@ -146,6 +154,7 @@ class AuthRepoImplTest {
             isActive = true,
             lastLoginAt = "",
             password = "1234567",
+            lastSyncAt = 1000,
         )
 
         val currentUser = CurrentUser(

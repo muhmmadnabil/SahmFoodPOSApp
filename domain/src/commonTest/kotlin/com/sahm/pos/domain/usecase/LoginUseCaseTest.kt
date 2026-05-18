@@ -1,6 +1,7 @@
 package com.sahm.pos.domain.usecase
 
-import com.sahm.pos.domain.LoginResult
+import com.sahm.pos.domain.CurrentTimestampProvider
+import com.sahm.pos.domain.results.LoginResult
 import com.sahm.pos.domain.entity.CurrentUser
 import com.sahm.pos.domain.entity.User
 import com.sahm.pos.domain.repository.AuthRepo
@@ -167,10 +168,6 @@ class LoginUseCaseTest {
         var updatedLastLoginUserId: String? = null
         var updatedLastLoginTimestamp: String? = null
 
-        override suspend fun hasUsers(): Boolean = true
-
-        override suspend fun syncUsers() = Unit
-
         override suspend fun getUserByPhone(phone: String): User? {
             if (throwOnFind) error("Database unavailable")
             return cashier.takeIf { it.phone == phone }
@@ -203,6 +200,7 @@ class LoginUseCaseTest {
             isActive = true,
             lastLoginAt = "",
             password = validPassword,
+            lastSyncAt = 1000,
         )
     }
 }

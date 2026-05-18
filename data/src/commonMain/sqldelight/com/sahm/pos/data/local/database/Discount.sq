@@ -1,0 +1,48 @@
+CREATE TABLE discounts (
+    id TEXT NOT NULL PRIMARY KEY,
+    promoCode TEXT NOT NULL,
+    percent REAL NOT NULL,
+    minValue REAL NOT NULL,
+    maxValue REAL NOT NULL,
+    startAt INTEGER NOT NULL,
+    endAt INTEGER NOT NULL,
+    syncedAt INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX discounts_promo_code_unique
+ON discounts(promoCode);
+
+selectAll:
+SELECT *
+FROM discounts
+ORDER BY promoCode;
+
+selectByPromoCode:
+SELECT *
+FROM discounts
+WHERE promoCode = ?;
+
+countAll:
+SELECT COUNT(*)
+FROM discounts;
+
+deleteAll:
+DELETE FROM discounts;
+
+lastSyncAt:
+SELECT MAX(CAST(syncedAt AS INTEGER))
+FROM discounts
+WHERE syncedAt != '';
+
+insert:
+INSERT INTO discounts(
+    id,
+    promoCode,
+    percent,
+    minValue,
+    maxValue,
+    startAt,
+    endAt,
+    syncedAt
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);

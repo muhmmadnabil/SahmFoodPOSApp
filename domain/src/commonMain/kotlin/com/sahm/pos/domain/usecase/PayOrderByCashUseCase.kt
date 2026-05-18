@@ -1,0 +1,83 @@
+package com.sahm.pos.domain.usecase
+
+import com.sahm.pos.domain.ClockProvider
+import com.sahm.pos.domain.ReceiptPrinter
+import com.sahm.pos.domain.UUIDProvider
+import com.sahm.pos.domain.entity.OrderStatus
+import com.sahm.pos.domain.entity.Payment
+import com.sahm.pos.domain.entity.PaymentStatus
+import com.sahm.pos.domain.entity.PaymentType
+import com.sahm.pos.domain.entity.PrintStatus
+import com.sahm.pos.domain.repository.OrderRepo
+import com.sahm.pos.domain.results.PrintResult
+import com.sahm.pos.domain.sync.SyncReason
+import com.sahm.pos.domain.sync.SyncScheduler
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+class PayOrderByCashUseCase(
+    private val repo: OrderRepo,
+    private val clockProvider: ClockProvider,
+    private val uuidProvider: UUIDProvider,
+    private val receiptPrinter: ReceiptPrinter,
+    private val syncScheduler: SyncScheduler? = null,
+    private val printScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+) {
+    suspend operator fun invoke(orderId: String): Result<Unit> {
+        val details = repo.getOrderDetails(orderId)
+            ?: return Result.failure(IllegalArgumentException("Order not found"))
+        if (details.order.orderStatus != OrderStatus.PendingPayment) {
+            return Result.failure(IllegalStateException("Order is not pending payment"))
+        }
+        val now = clockProvider.nowMillis()
+        repo.upsertPayment(
+            Payment(
+                id = uuidProvider.randomUuid(),
+                orderId = orderId,
+                type = PaymentType.CASH,
+                status = PaymentStatus.Paid,
+                amount = details.order.totalAmount,
+                transactionId = null,
+                gatewayReference = null,
+                authorizationCode = null,
+                cardBrand = null,
+                cardLast4 = null,
+                failureReason = null,
+                createdAt = now,
+                completedAt = now,
+                syncedAt = null,
+            )
+        )
+        repo.updateOrderAfterPayment(orderId, OrderStatus.Paid, PaymentStatus.Paid, now)
+        printOrderInBackground(orderId)
+        runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
+        return Result.success(Unit)
+    }
+
+    private fun printOrderInBackground(orderId: String) {
+        printScope.launch {
+            try {
+                printOrder(orderId)
+            } finally {
+                runCatching { syncScheduler?.scheduleSync(SyncReason.PaymentCreated) }
+            }
+        }
+    }
+
+    private suspend fun printOrder(orderId: String) {
+        try {
+            repo.updateOrderPrintStatus(orderId, PrintStatus.Printing)
+            when (receiptPrinter.printOrderReceipt(orderId)) {
+                PrintResult.Success -> repo.updateOrderPrintStatus(orderId, PrintStatus.Printed)
+                is PrintResult.Failed -> repo.updateOrderPrintStatus(orderId, PrintStatus.Failed)
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Throwable) {
+            runCatching { repo.updateOrderPrintStatus(orderId, PrintStatus.Failed) }
+        }
+    }
+}

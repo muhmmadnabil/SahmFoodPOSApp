@@ -20,6 +20,10 @@ class AuthRepoImpl(
     override suspend fun getCurrentUser(): CurrentUser? =
         dataStoreLocalDataSource.getCurrentUser()
 
+    override suspend fun clearCurrentUser() {
+        dataStoreLocalDataSource.clearCurrentUser()
+    }
+
     override suspend fun updateUserLastLoginAt(userId: String, timestamp: String) {
         sqlDelightLocalDataSource.updateUserLastLoginAt(
             userId = userId,

@@ -1,0 +1,196 @@
+CREATE TABLE orders (
+    id TEXT NOT NULL PRIMARY KEY,
+    cashier_id TEXT NOT NULL,
+    cashier_name TEXT NOT NULL,
+    subtotal_amount INTEGER NOT NULL,
+    tax_amount INTEGER NOT NULL,
+    discount_amount INTEGER NOT NULL DEFAULT 0,
+    service_amount INTEGER NOT NULL DEFAULT 0,
+    total_amount INTEGER NOT NULL,
+    discount_id TEXT,
+    discount_promo_code TEXT,
+    discount_percent REAL,
+    discount_min_value REAL,
+    discount_max_value REAL,
+    order_type TEXT NOT NULL DEFAULT 'TAKEAWAY',
+    order_status TEXT NOT NULL,
+    payment_status TEXT NOT NULL,
+    print_status TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    paid_at INTEGER,
+    cancelled_at INTEGER,
+    synced_at INTEGER
+);
+
+CREATE TABLE order_items (
+    id TEXT NOT NULL PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    menu_item_id TEXT NOT NULL,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    local_image_url TEXT,
+    quantity INTEGER NOT NULL,
+    unit_price INTEGER NOT NULL,
+    subtotal_amount INTEGER NOT NULL,
+    discount_amount INTEGER NOT NULL,
+    tax_amount INTEGER NOT NULL,
+    total_amount INTEGER NOT NULL,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE payments (
+    id TEXT NOT NULL PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    method TEXT NOT NULL,
+    status TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    transaction_id TEXT,
+    gateway_reference TEXT,
+    authorization_code TEXT,
+    card_brand TEXT,
+    card_last4 TEXT,
+    failure_reason TEXT,
+    created_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    synced_at INTEGER,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE refunds (
+    id TEXT NOT NULL PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    payment_id TEXT,
+    refund_status TEXT NOT NULL,
+    refund_method TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    reason TEXT,
+    created_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    synced_at INTEGER,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY(payment_id) REFERENCES payments(id)
+);
+
+CREATE TABLE refund_items (
+    id TEXT NOT NULL PRIMARY KEY,
+    refund_id TEXT NOT NULL,
+    order_item_id TEXT NOT NULL,
+    menu_item_id TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price INTEGER NOT NULL,
+    subtotal_amount INTEGER NOT NULL,
+    discount_amount INTEGER NOT NULL,
+    tax_amount INTEGER NOT NULL,
+    total_refund_amount INTEGER NOT NULL,
+    FOREIGN KEY(refund_id) REFERENCES refunds(id) ON DELETE CASCADE,
+    FOREIGN KEY(order_item_id) REFERENCES order_items(id)
+);
+
+insertOrder:
+INSERT INTO orders(
+    id, cashier_id, cashier_name, subtotal_amount, tax_amount, discount_amount, service_amount, total_amount,
+    discount_id, discount_promo_code, discount_percent, discount_min_value, discount_max_value, order_type,
+    order_status, payment_status, print_status, created_at, paid_at, cancelled_at, synced_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertOrderItem:
+INSERT INTO order_items(
+    id, order_id, menu_item_id, category, name, description, image_url, local_image_url,
+    quantity, unit_price, subtotal_amount, discount_amount, tax_amount, total_amount
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectOrderById:
+SELECT *
+FROM orders
+WHERE id = ?;
+
+selectOrders:
+SELECT *
+FROM orders
+ORDER BY created_at DESC, id DESC;
+
+selectOrderItemsByOrderId:
+SELECT *
+FROM order_items
+WHERE order_id = ?
+ORDER BY id;
+
+updateOrderAfterPayment:
+UPDATE orders
+SET order_status = ?, payment_status = ?, paid_at = ?
+WHERE id = ?;
+
+updateOrderPaymentStatus:
+UPDATE orders
+SET payment_status = ?
+WHERE id = ?;
+
+updateOrderPrintStatus:
+UPDATE orders
+SET print_status = ?
+WHERE id = ?;
+
+updateOrderRefundStatus:
+UPDATE orders
+SET order_status = ?, payment_status = ?
+WHERE id = ?;
+
+insertOrReplacePayment:
+INSERT OR REPLACE INTO payments(
+    id, order_id, method, status, amount, transaction_id, gateway_reference, authorization_code,
+    card_brand, card_last4, failure_reason, created_at, completed_at, synced_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectPaymentsByOrderId:
+SELECT *
+FROM payments
+WHERE order_id = ?
+ORDER BY created_at, id;
+
+selectCompletedPaymentForOrder:
+SELECT *
+FROM payments
+WHERE order_id = ? AND status = 'Paid'
+ORDER BY completed_at DESC
+LIMIT 1;
+
+insertRefund:
+INSERT INTO refunds(
+    id, order_id, payment_id, refund_status, refund_method, amount, reason, created_at, completed_at, synced_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertRefundItem:
+INSERT INTO refund_items(
+    id, refund_id, order_item_id, menu_item_id, item_name, quantity, unit_price,
+    subtotal_amount, discount_amount, tax_amount, total_refund_amount
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectRefundById:
+SELECT *
+FROM refunds
+WHERE id = ?;
+
+selectRefundsByOrderId:
+SELECT *
+FROM refunds
+WHERE order_id = ?
+ORDER BY created_at, id;
+
+selectRefundItemsByRefundId:
+SELECT *
+FROM refund_items
+WHERE refund_id = ?
+ORDER BY id;
+
+updateRefundStatus:
+UPDATE refunds
+SET refund_status = ?, completed_at = ?
+WHERE id = ?;

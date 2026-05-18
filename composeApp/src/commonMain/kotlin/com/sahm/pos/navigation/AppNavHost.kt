@@ -2,40 +2,46 @@ package com.sahm.pos.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.sahm.pos.domain.usecase.HasCurrentUserUseCase
+import com.sahm.pos.screens.home.HomeEffect
+import com.sahm.pos.screens.home.HomeIntent
 import com.sahm.pos.screens.home.HomeScreen
+import com.sahm.pos.screens.home.HomeViewModel
 import com.sahm.pos.screens.login.LoginEffect
 import com.sahm.pos.screens.login.LoginScreen
 import com.sahm.pos.screens.login.LoginViewModel
+import com.sahm.pos.screens.orders.OrdersIntent
+import com.sahm.pos.screens.orders.OrdersScreen
+import com.sahm.pos.screens.orders.OrdersViewModel
+import com.sahm.pos.screens.settings.SettingsAction
+import com.sahm.pos.screens.settings.SettingsIntent
+import com.sahm.pos.screens.settings.SettingsScreen
+import com.sahm.pos.screens.settings.SettingsViewModel
+import com.sahm.pos.screens.sync.SyncDetailType
+import com.sahm.pos.screens.sync.SyncScreen
+import com.sahm.pos.screens.syncDetails.SyncDetailsScreen
+import com.sahm.pos.screens.syncDetails.SyncEffect
+import com.sahm.pos.screens.syncDetails.SyncIntent
+import com.sahm.pos.screens.syncDetails.SyncViewModel
 import com.sahm.pos.utils.ScreenType
-import org.koin.compose.koinInject
+import org.jetbrains.compose.resources.StringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun AppNavHost(
+    navController: NavHostController,
     screenType: ScreenType,
+    startDestination: String,
+    showMessage: suspend (StringResource) -> Unit,
     modifier: Modifier = Modifier,
-    hasCurrentUserUseCase: HasCurrentUserUseCase = koinInject(),
 ) {
-    val navController = rememberNavController()
-    val hasCurrentUser by produceState<Boolean?>(
-        initialValue = null,
-        key1 = hasCurrentUserUseCase,
-    ) {
-        value = hasCurrentUserUseCase()
-    }
-    val startDestination = when (hasCurrentUser) {
-        true -> AppRoute.Home
-        false -> AppRoute.Login
-        null -> return
-    }
+    val currentShowMessage by rememberUpdatedState(showMessage)
 
     NavHost(
         navController = navController,
@@ -49,14 +55,18 @@ fun AppNavHost(
             LaunchedEffect(Unit) {
                 viewModel.effect.collect { effect ->
                     when (effect) {
-                        LoginEffect.NavigateToPos -> {
+                        LoginEffect.NavigateToHome -> {
                             navController.navigate(AppRoute.Home) {
                                 popUpTo(AppRoute.Login) { inclusive = true }
                             }
                         }
 
                         is LoginEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
 
+                        LoginEffect.NavigateToSync -> {
+                            navController.navigate(AppRoute.Sync)
                         }
                     }
                 }
@@ -65,12 +75,232 @@ fun AppNavHost(
             LoginScreen(
                 state = state,
                 screenType = screenType,
-                onIntent = viewModel::onIntent,
+                onIntent = viewModel::onIntent
             )
         }
 
         composable(AppRoute.Home) {
-            HomeScreen()
+            val viewModel = koinViewModel<HomeViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(HomeIntent.ScreenOpened)
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        HomeEffect.NavigateToOrders -> {
+                            navController.navigate(AppRoute.Orders)
+                        }
+
+                        HomeEffect.NavigateToSettings -> {
+                            navController.navigate(AppRoute.Settings)
+                        }
+
+                        is HomeEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            HomeScreen(
+                screenType = screenType,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.Orders) {
+            val viewModel = koinViewModel<OrdersViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(OrdersIntent.ScreenOpened)
+            }
+
+            OrdersScreen(
+                screenType = screenType,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.Settings) {
+            val viewModel = koinViewModel<SettingsViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SettingsIntent.ScreenOpened)
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.action.collect { action ->
+                    when (action) {
+                        SettingsAction.NavigateToLogin -> {
+                            navController.navigate(AppRoute.Login) {
+                                popUpTo(AppRoute.Home) { inclusive = true }
+                            }
+                        }
+
+                        SettingsAction.NavigateToSync -> {
+                            navController.navigate(AppRoute.Sync)
+                        }
+
+                        is SettingsAction.ShowMessage -> {
+                            currentShowMessage(action.message)
+                        }
+                    }
+                }
+            }
+
+            SettingsScreen(
+                screenType = screenType,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.Sync) {
+            SyncScreen(
+                screenType = screenType,
+                onUsersClick = { navController.navigate(AppRoute.SyncUsers) },
+                onItemsClick = { navController.navigate(AppRoute.SyncItems) },
+                onDiscountsClick = { navController.navigate(AppRoute.SyncDiscounts) },
+                onOrdersClick = { navController.navigate(AppRoute.SyncOrders) },
+                onPaymentsClick = { navController.navigate(AppRoute.SyncPayments) },
+            )
+        }
+
+        composable(AppRoute.SyncUsers) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Users))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Users,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncItems) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Items))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Items,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncDiscounts) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Discounts))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Discounts,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncOrders) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Orders))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Orders,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
+        }
+
+        composable(AppRoute.SyncPayments) {
+            val viewModel = koinViewModel<SyncViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
+            LaunchedEffect(Unit) {
+                viewModel.onIntent(SyncIntent.ScreenOpened(SyncDetailType.Payments))
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.effect.collect { effect ->
+                    when (effect) {
+                        is SyncEffect.ShowMessage -> {
+                            currentShowMessage(effect.message)
+                        }
+                    }
+                }
+            }
+
+            SyncDetailsScreen(
+                screenType = screenType,
+                type = SyncDetailType.Payments,
+                state = state,
+                onIntent = viewModel::onIntent,
+            )
         }
     }
 }

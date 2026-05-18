@@ -33,10 +33,12 @@ kotlin {
         }
 
         androidMain.dependencies {
+            implementation(files("libs/SmartPos_1.3.6_R201217.jar"))
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.firestore)
             implementation(libs.ktor.client.android)
             implementation(libs.sqldelight.androidDriver)
+            implementation(libs.androidx.work.runtime)
         }
 
         iosMain.dependencies {
@@ -47,6 +49,11 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+        }
+
+        androidUnitTest.dependencies {
+            implementation(libs.sqldelight.sqliteDriver)
         }
     }
 }
@@ -57,6 +64,10 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+
+    buildFeatures {
+        aidl = true
     }
 
     compileOptions {

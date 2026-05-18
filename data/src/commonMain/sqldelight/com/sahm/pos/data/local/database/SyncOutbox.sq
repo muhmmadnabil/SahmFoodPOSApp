@@ -1,0 +1,191 @@
+CREATE TABLE sync_outbox (
+    id TEXT NOT NULL PRIMARY KEY,
+    type TEXT NOT NULL,
+    aggregate_id TEXT NOT NULL,
+    aggregate_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    max_retries INTEGER NOT NULL DEFAULT 10,
+    next_attempt_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    locked_at INTEGER,
+    last_error_code TEXT,
+    last_error_message TEXT
+);
+
+insertOutboxItemOrIgnore:
+INSERT OR IGNORE INTO sync_outbox (
+    id,
+    type,
+    aggregate_id,
+    aggregate_type,
+    payload_json,
+    idempotency_key,
+    status,
+    retry_count,
+    max_retries,
+    next_attempt_at,
+    created_at,
+    updated_at,
+    locked_at,
+    last_error_code,
+    last_error_message
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertOutboxItem:
+INSERT INTO sync_outbox(
+    id, type, aggregate_id, aggregate_type, payload_json, idempotency_key, status,
+    retry_count, max_retries, next_attempt_at, created_at, updated_at, locked_at,
+    last_error_code, last_error_message
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectPendingItems:
+SELECT *
+FROM sync_outbox
+WHERE status = 'PENDING'
+   OR (
+        status = 'RETRY_WAITING'
+        AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+   )
+ORDER BY created_at ASC, id ASC
+LIMIT ?;
+
+selectById:
+SELECT *
+FROM sync_outbox
+WHERE id = ?;
+
+markInProgress:
+UPDATE sync_outbox
+SET status = 'IN_PROGRESS',
+    locked_at = ?,
+    updated_at = ?,
+    last_error_code = NULL,
+    last_error_message = NULL
+WHERE id = ?;
+
+markSucceeded:
+UPDATE sync_outbox
+SET status = 'SUCCEEDED',
+    locked_at = NULL,
+    updated_at = ?,
+    last_error_code = NULL,
+    last_error_message = NULL
+WHERE id = ?;
+
+markRetryWaiting:
+UPDATE sync_outbox
+SET status = 'RETRY_WAITING',
+    retry_count = ?,
+    next_attempt_at = ?,
+    locked_at = NULL,
+    last_error_code = ?,
+    last_error_message = ?,
+    updated_at = ?
+WHERE id = ?;
+
+markFailed:
+UPDATE sync_outbox
+SET status = 'FAILED',
+    locked_at = NULL,
+    last_error_code = ?,
+    last_error_message = ?,
+    updated_at = ?
+WHERE id = ?;
+
+markConflict:
+UPDATE sync_outbox
+SET status = 'CONFLICT',
+    locked_at = NULL,
+    last_error_code = ?,
+    last_error_message = ?,
+    updated_at = ?
+WHERE id = ?;
+
+resetStaleInProgress:
+UPDATE sync_outbox
+SET status = 'PENDING',
+    locked_at = NULL,
+    updated_at = ?
+WHERE status = 'IN_PROGRESS'
+  AND locked_at IS NOT NULL
+  AND locked_at < ?;
+
+countPending:
+SELECT COUNT(*)
+FROM sync_outbox
+WHERE status IN ('PENDING', 'RETRY_WAITING', 'IN_PROGRESS');
+
+countConflicts:
+SELECT COUNT(*)
+FROM sync_outbox
+WHERE status = 'CONFLICT';
+
+countFailed:
+SELECT COUNT(*)
+FROM sync_outbox
+WHERE status = 'FAILED';
+
+selectOrderSyncStats:
+SELECT
+    COUNT(*) AS total_count,
+    COUNT(synced_at) AS synced_count,
+    COUNT(*) - COUNT(synced_at) AS unsynced_count,
+    MAX(synced_at) AS last_sync_at
+FROM orders;
+
+selectPaymentSyncStats:
+SELECT
+    COUNT(*) AS total_count,
+    COUNT(synced_at) AS synced_count,
+    COUNT(*) - COUNT(synced_at) AS unsynced_count,
+    MAX(synced_at) AS last_sync_at
+FROM payments;
+
+selectOrderSyncedAt:
+SELECT synced_at
+FROM orders
+WHERE id = ?;
+
+selectPaymentSyncedAt:
+SELECT synced_at
+FROM payments
+WHERE id = ?;
+
+selectRefundSyncedAt:
+SELECT synced_at
+FROM refunds
+WHERE id = ?;
+
+selectPaymentOrderSyncedAt:
+SELECT orders.synced_at
+FROM payments
+JOIN orders ON orders.id = payments.order_id
+WHERE payments.id = ?;
+
+selectRefundDependencies:
+SELECT orders.synced_at AS order_synced_at, payments.synced_at AS payment_synced_at
+FROM refunds
+JOIN orders ON orders.id = refunds.order_id
+LEFT JOIN payments ON payments.id = refunds.payment_id
+WHERE refunds.id = ?;
+
+markOrderSynced:
+UPDATE orders
+SET synced_at = ?
+WHERE id = ?;
+
+markPaymentSynced:
+UPDATE payments
+SET synced_at = ?
+WHERE id = ?;
+
+markRefundSynced:
+UPDATE refunds
+SET synced_at = ?
+WHERE id = ?;
