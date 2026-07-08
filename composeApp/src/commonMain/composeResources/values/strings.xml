@@ -42,7 +42,7 @@
     <string name="sync_items_success_with_warnings">Items synced with some invalid documents skipped</string>
     <string name="sync_discounts_success">Discounts synced successfully</string>
     <string name="sync_discounts_success_with_warnings">Discounts synced with some invalid documents skipped</string>
-    <string name="sync_outbox_success">Orders and payments synced successfully</string>
+    <string name="sync_outbox_success">Orders, payments, and refunds synced successfully</string>
     <string name="sync_outbox_needs_retry">Some records could not sync yet. Sync will retry.</string>
     <string name="sync_discounts_permission_denied">You do not have permission to sync discounts.</string>
     <string name="sync_discounts_duplicate_promo">Duplicate promo codes found. Local discounts were kept safely.</string>
@@ -73,8 +73,8 @@
     <string name="sync_failed">Failed</string>
     <string name="phone_time_warning">Phone time looks incorrect. Please check date and time settings.</string>
     <string name="phone_time_check_failed">Could not verify phone time. The app will keep running.</string>
-    <string name="home_pos_highlight">POS</string>
-    <string name="home_pos_title_suffix"> System</string>
+    <string name="home_pos_highlight">Restaurant</string>
+    <string name="home_pos_title_suffix"> POS</string>
     <string name="home_search_label">Search</string>
     <string name="home_search_menu_items_placeholder">Search menu items...</string>
     <string name="home_search_items_placeholder">Search items...</string>

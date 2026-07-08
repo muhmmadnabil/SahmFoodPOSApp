@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SahmFoodPOSiOSApp: App {
+struct RestaurantPOSiOSApp: App {
     var body: some Scene {
         WindowGroup {
             ComposeView()

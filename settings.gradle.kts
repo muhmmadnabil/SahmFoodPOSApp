@@ -1,4 +1,4 @@
-rootProject.name = "SahmFoodPOSApp"
+rootProject.name = "RestaurantPOSApp"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

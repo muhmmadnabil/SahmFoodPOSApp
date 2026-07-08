@@ -62,6 +62,10 @@ kotlin {
     }
 }
 
+compose.resources {
+    packageOfResClass = "sahmfoodposapp.composeapp.generated.resources"
+}
+
 android {
     namespace = "com.sahm.pos"
     compileSdk = libs.versions.android.compileSdk.get().toInt()

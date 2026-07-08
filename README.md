@@ -1,248 +1,159 @@
-# Sahm Food POS
+# Restaurant POS
 
-Sahm Food POS is a Kotlin Multiplatform point-of-sale application for food cashier workflows. It shares the main product logic, UI, navigation, dependency injection, local persistence, and tests across Android and iOS while keeping platform code limited to native integrations such as Firebase, SQLDelight drivers, Android WorkManager, Android SmartPOS printing, and iOS HTTP access to Firestore.
+Restaurant POS is a Kotlin Multiplatform point-of-sale app for restaurant cashier workflows. The project focuses on a practical offline-first flow: cashiers can log in, browse a synced menu, create orders, take payments, print receipts, and keep working even when the network is temporarily unavailable.
 
-The current implementation is not only a login shell. It includes cashier authentication, menu browsing, cart building, dine-in/takeaway/delivery order creation, discount validation, cash and card payment flows, receipt printing, order history, refund domain logic, manual and automatic synchronization, and an offline outbox for orders, payments, and refunds.
+The same business logic, UI, navigation, local database, dependency injection, and tests are shared across Android and iOS. Platform-specific code is used only where it is needed, such as Firebase, SQLDelight drivers, WorkManager, SmartPOS printing, and iOS Firestore REST calls.
 
-## Table of contents
+## What The App Does
 
-- [Tech stack](#tech-stack)
-- [Architecture](#architecture)
-- [Main features](#main-features)
-- [Important code paths](#important-code-paths)
-- [Handled edge cases](#handled-edge-cases)
-- [Sync and offline strategy](#sync-and-offline-strategy)
-- [Persistence model](#persistence-model)
-- [Platform behavior](#platform-behavior)
-- [Running the project](#running-the-project)
-- [Testing](#testing)
-- [Project structure](#project-structure)
+- Cashier login using locally synced users.
+- Menu browsing from local SQLDelight storage.
+- Category filtering and menu search.
+- Cart building with quantity changes and item removal.
+- Dine-in, takeaway, and delivery orders.
+- Promo code validation and discount calculation.
+- Cash and card payment flows.
+- Receipt printing on Android SmartPOS devices.
+- Order history with filters, sorting, and order details.
+- Refund domain logic for cash and card refunds.
+- Manual and automatic sync for users, menu items, discounts, orders, payments, and refunds.
+- Offline outbox for actions that must be uploaded later.
 
-## Tech stack
+## Why Offline-First Matters Here
+
+In a restaurant, the cashier should not stop taking orders just because the internet drops for a few minutes. This project handles that by making local storage the source of truth for cashier actions.
+
+The basic idea is:
+
+1. The app downloads reference data such as users, menu items, and discounts.
+2. The cashier creates orders and payments locally.
+3. Every important local action writes an outbox row in the same database transaction.
+4. The app uploads those outbox rows when the network is available.
+5. If upload fails, the row stays in the outbox and is retried later.
+6. The UI can show what is synced, pending, failed, or conflicted.
+
+This means the cashier flow stays fast and reliable, while remote sync happens in the background.
+
+## Tech Stack
 
 - Kotlin Multiplatform for shared Android and iOS code.
-- Compose Multiplatform and Material 3 for the shared UI.
+- Compose Multiplatform and Material 3 for shared UI.
 - Compose Navigation for screen routing.
-- Android adaptive window APIs for phone/tablet layout selection.
-- Koin for dependency injection and ViewModel creation.
-- Kotlin Coroutines and Flow for async work, UI state, and one-time effects.
+- Koin for dependency injection.
+- Kotlin Coroutines and Flow for async work and UI state.
 - SQLDelight for local users, menu items, discounts, orders, payments, refunds, and sync outbox storage.
 - AndroidX DataStore Preferences for current-user and time-sync metadata.
-- Firebase Firestore on Android for remote users, menu items, discounts, and outbox uploads.
+- Firebase Firestore on Android.
 - Ktor client on iOS for Firestore REST access.
 - Android WorkManager for background outbox sync.
 - SmartPOS printer AIDL integration on Android.
-- kotlin.test and kotlinx-coroutines-test for domain, data, and ViewModel tests.
+- kotlin.test and kotlinx-coroutines-test for tests.
 
 ## Architecture
 
 The project uses clean architecture with an MVI-style UI layer.
 
 ```text
-composeApp -> data -> domain
 composeApp -> domain
+composeApp -> data -> domain
 ```
 
-### `domain`
+### Domain Module
 
-The domain module is the business core. It contains entities, repository contracts, gateway/printer abstractions, result models, sync policies, and use cases. It has no dependency on Compose, Firebase, SQLDelight, WorkManager, or platform APIs.
+The domain module contains the business rules. It does not depend on Compose, Firebase, SQLDelight, WorkManager, or platform APIs.
 
-Examples:
+Important examples:
 
-- `CreateOrderUseCase` validates cart input, verifies the cashier, checks local menu item availability, calculates service/tax/discount totals, creates order lines, and schedules sync.
-- `PayOrderByCashUseCase` creates a paid cash payment, marks the order as paid, starts receipt printing in the background, and schedules sync.
-- `PayOrderByCardUseCase` validates card fields, writes a processing payment, calls the payment gateway, records success/failure details, updates the order, and schedules printing/sync on success.
-- `CreateRefundUseCase`, `RefundByCashUseCase`, and `RefundByCardUseCase` handle refund selection, proration, payment gateway refunding, receipt printing, and aggregate order/payment status updates.
-- `SyncRetryPolicy` defines retryable error codes and exponential-style retry delays.
+- `CreateOrderUseCase` validates the cart, reloads menu items from local storage, calculates totals, applies discounts, and creates the order.
+- `PayOrderByCashUseCase` creates a paid cash payment, marks the order as paid, starts receipt printing, and schedules sync.
+- `PayOrderByCardUseCase` stores a processing payment, calls the payment gateway, saves success or failure, and schedules sync only when payment succeeds.
+- `CreateRefundUseCase`, `RefundByCashUseCase`, and `RefundByCardUseCase` handle refund rules and refund status updates.
+- `SyncRetryPolicy` defines which sync errors should be retried and how long to wait before retrying.
 
-### `data`
+### Data Module
 
-The data module implements the domain contracts. It owns local and remote data access, mapping, platform database drivers, image caching, background sync integration, and printer implementations.
+The data module connects the business rules to local storage, remote APIs, sync, and printing.
 
-Examples:
+Important examples:
 
-- `SyncDataRepoImpl` coordinates Firestore data, SQLDelight persistence, cached menu images, server time checks, outbox upload, dependency checks, and aggregate sync timestamps.
-- `OrderRepoImpl` persists orders/payments/refunds transactionally and writes idempotent outbox rows for sync.
-- `SqlDelightLocalDataSourceImpl` implements local snapshots for users, menu items, discounts, and outbox state transitions.
-- `SyncOutboxProcessorImpl` processes pending outbox rows safely, including stale lock recovery, dependency delays, retryable failures, non-retryable failures, and conflicts.
+- `OrderRepoImpl` saves orders, payments, refunds, and outbox rows transactionally.
+- `SyncDataRepoImpl` reads remote reference data, uploads outbox rows, marks aggregates as synced, and checks upload dependencies.
+- `SqlDelightLocalDataSourceImpl` owns SQLDelight queries and sync state transitions.
+- `SyncOutboxProcessorImpl` processes pending outbox rows safely.
+- `FirebaseRemoteDataSource` uploads Android outbox rows to Firestore.
 
-### `composeApp`
+### Compose App Module
 
-The Compose app module owns the shared UI, navigation, MVI contracts, ViewModels, theme, reusable components, and platform entry points.
+The Compose app module contains screens, ViewModels, navigation, theme, and reusable UI components.
 
-Examples:
+Important examples:
 
-- `LoginViewModel` normalizes phone input, validates credentials, checks sync warnings, and emits navigation effects.
-- `HomeViewModel` loads menu items, filters categories/search, manages the cart, applies discounts, creates orders, and drives cash/card payment flows.
-- `OrdersViewModel` lists historical orders, filters and sorts them, loads full order details, and supports receipt reprinting.
-- `SyncViewModel` exposes sync counts, last sync times, skipped invalid rows, outbox counts, and manual sync actions.
-- `SettingsViewModel` loads the current cashier, logs out, and links to sync tools.
+- `LoginViewModel` validates login input and checks if sync needs attention.
+- `HomeViewModel` loads menu items, manages the cart, applies discounts, creates orders, and starts payment flows.
+- `OrdersViewModel` shows order history and order details.
+- `SyncViewModel` shows sync counts, last sync times, and manual sync actions.
+- `SettingsViewModel` loads the current cashier and handles logout.
 
-## Main features
+## Core Flows
 
-### Authentication
+### Login
 
-- Cashiers log in with phone and password.
-- Phone input is normalized by removing whitespace and converting Arabic/Persian digits to Latin digits.
-- Login works against locally synced users, so authentication does not require a live network request after users are synced.
-- Successful login updates `lastLoginAt` and stores the current user in DataStore.
-- The login screen checks pending/failed/conflicted outbox rows before login and exposes sync navigation when attention is needed.
+Cashiers log in with phone and password. Users are synced into the local database, so login can work without a live network request after the first sync.
 
-### Menu and cart
+Phone numbers are normalized by removing spaces and converting Arabic/Persian digits to Latin digits.
 
-- Menu items are loaded from the local SQLDelight database.
-- Items can be filtered by category and searched by name.
-- The cart supports adding items, changing quantities, and removing lines.
-- Cart edits invalidate the previously created order id/payment selection so the user cannot accidentally pay an outdated draft.
-- Order types include `DINE_IN`, `TAKEAWAY`, and `DELIVERY`.
+### Menu And Cart
 
-### Order totals
+Menu items are loaded from SQLDelight. The cashier can filter by category, search by name, add items to the cart, change quantities, and choose the order type.
 
-Amounts are stored in minor units as `Long` values to avoid floating-point money errors in persisted orders.
+When the cart changes, the existing created order id is cleared. This prevents the app from paying an old order after the cashier changes the cart.
 
-The domain order calculation:
+### Order Creation
 
-1. Sum item line subtotals.
-2. Add 10% service for dine-in orders.
-3. Validate and apply promo code discount when present.
-4. Calculate 14% tax on the amount after discount.
-5. Store subtotal, service, discount, tax, and final total on the order.
-6. Allocate order-level discounts and taxes back to order lines proportionally.
+Order creation is local-first.
 
-`CreateOrderUseCase` is the source of truth for persisted totals. The UI recalculates a live preview for cashier feedback, but the domain layer revalidates and recomputes everything before saving.
+`CreateOrderUseCase` revalidates the cart before saving:
 
-### Discounts
+- The cart cannot be empty.
+- Quantities must be positive.
+- The cashier must exist.
+- Menu items are reloaded from local storage.
+- Missing or inactive menu items are rejected.
+- Promo code rules are checked again.
+- Totals are calculated in the domain layer.
 
-- Discounts are synced from remote data into the local database.
-- A promo code can be applied to the current cart before payment.
-- Discount configuration is validated before use.
-- The order creation step rechecks that the discount exists, has started, has not expired, and satisfies the minimum order value.
-- Discount amounts are capped by max value and by the order subtotal so totals cannot go below zero.
+`OrderRepoImpl` then saves the order, order items, and `CREATE_ORDER` outbox row in one transaction.
 
 ### Payments
 
-- Cash payments immediately create a paid payment row and mark the order as paid.
-- Card payments first write a `Processing` payment, then call the `PaymentGateway`.
-- Successful card payments persist transaction id, gateway reference, authorization code, card brand, and last four digits.
-- Failed card payments persist failure reason and keep the order available for retry.
-- A failed or processing card payment can be reused on retry instead of creating unlimited duplicate payment rows.
+Cash payment is completed locally and can be uploaded later.
 
-### Receipt printing
+Card payment stores a processing payment first, then calls the payment gateway:
 
-- Payment success triggers receipt printing in the background.
-- Print status moves through `NotPrinted`, `Printing`, `Printed`, or `Failed`.
-- Printing failures do not roll back the successful payment.
-- Orders can be reprinted from the order details screen.
-- Android uses the SmartPOS printer service through AIDL with connection retry and a mutex so multiple print jobs do not overlap.
-- iOS currently uses a fake receipt printer implementation.
+- On success, payment details are saved, the order becomes paid, receipt printing starts, and sync is scheduled.
+- On failure, the failure reason is saved and the order stays available for retry.
+- A failed or processing card payment can be reused on retry instead of creating duplicate payment rows.
 
-### Order history
+### Receipt Printing
 
-- Orders are listed newest-first by default.
-- Cashiers can search by order id, filter by order type, and switch sort direction.
-- Order details include items, payments, refunds, totals, payment status, order status, and print status.
+Receipt printing is separate from payment success. If the printer fails, the payment is still saved as successful and the print status becomes `Failed`. The cashier can retry printing from order details.
+
+Android uses the SmartPOS printer service through AIDL. iOS currently uses a fake receipt printer.
 
 ### Refunds
 
-The refund domain is implemented even though the visible UI is currently centered on orders and payment history.
+Refund logic is implemented in the domain layer:
 
 - Only paid or partially refunded orders are refundable.
-- Refund selections must contain positive quantities.
-- Already pending, processing, or completed refund quantities reduce the remaining refundable quantity.
-- Refund amounts are prorated across subtotal, discount, tax, and total amounts.
-- Cash refunds complete locally and print a refund receipt.
-- Card refunds require an original completed card payment with a transaction id, call the payment gateway, and handle success/failure.
-- Aggregate order/payment status becomes `PartiallyRefunded` or `Refunded` based on the refunded amount.
+- Refund quantities cannot exceed the remaining refundable quantity.
+- Pending and processing refunds reserve quantity so the same items are not refunded twice.
+- Cash refunds complete locally.
+- Card refunds require the original card transaction id.
+- Failed card refunds are saved without marking the order as refunded.
 
-### Sync screens
+## Offline Sync Flow
 
-- Users, items, discounts, orders, and payments each have sync entry points.
-- Sync detail screens show counts, last sync time, synced/unsynced aggregate counts, and outbox health.
-- Manual outbox sync is supported.
-- Remote sync reports success, empty remote data, permission denied, invalid data, duplicate promo codes, local storage errors, request timeout, no internet, and unknown errors.
-
-## Important code paths
-
-### App startup and navigation
-
-`App.kt` starts Koin with `appModules(platformContext)`. `AppNavHost` selects the start destination passed by the app shell, then routes between:
-
-- `Login`
-- `Home`
-- `Orders`
-- `Settings`
-- `Sync`
-- `SyncUsers`
-- `SyncItems`
-- `SyncDiscounts`
-- `SyncOrders`
-- `SyncPayments`
-
-ViewModels expose `StateFlow` for render state and `SharedFlow` for one-time navigation/toast-like effects. Composables render from state and send intents back to the ViewModel.
-
-### Login flow
-
-`LoginViewModel` performs UI-level validation:
-
-- Phone is required.
-- Phone must be 12 Latin digits after normalization.
-- Phone must start with `20`.
-- Password is required.
-- Password length must be greater than 6 characters.
-
-`LoginUseCase` performs business-level validation:
-
-- Trim phone/password.
-- Load user by phone from `AuthRepo`.
-- Compare the saved password.
-- Update `lastLoginAt`.
-- Save `CurrentUser`.
-
-### Order creation flow
-
-`HomeViewModel` creates an order only when the cashier chooses to make/pay the order. It sends `CreateOrderRequest` to `CreateOrderUseCase`.
-
-`CreateOrderUseCase` handles the critical rules:
-
-- Empty carts are rejected.
-- Zero or negative quantities are rejected.
-- Missing cashier is rejected.
-- Menu item ids are reloaded from local storage to catch stale UI data.
-- Missing or inactive menu items are rejected.
-- Discount rules are rechecked at creation time.
-- Order and order item ids come from `UUIDProvider`.
-- Order, order items, and outbox row are written transactionally by `OrderRepoImpl`.
-
-### Payment flow
-
-Cash:
-
-```text
-PayOrderByCashUseCase
--> get order details
--> reject non-pending orders
--> insert paid payment
--> update order as paid
--> print receipt in background
--> schedule outbox sync
-```
-
-Card:
-
-```text
-PayOrderByCardUseCase
--> get order details
--> reject non-pending orders
--> validate card fields
--> insert/update processing payment
--> call payment gateway
--> on success: persist gateway data, mark order paid, print, schedule sync
--> on failure: persist failed payment details and show reason
-```
-
-### Sync outbox flow
-
-Local business actions write outbox rows with stable idempotency keys:
+Local actions create outbox rows with stable idempotency keys:
 
 ```text
 CREATE_ORDER:<orderId>
@@ -250,147 +161,82 @@ CREATE_PAYMENT:<paymentId>
 CREATE_REFUND:<refundId>
 ```
 
-`SyncOutboxProcessorImpl` processes rows in creation order:
+The processor handles the queue like this:
 
 1. Reset stale `IN_PROGRESS` rows after 10 minutes.
-2. Select pending or ready retry rows.
-3. Check aggregate dependencies.
-4. Mark the row `IN_PROGRESS`.
-5. Upload to remote.
-6. Mark success, retry waiting, failed, or conflict.
-7. Return `NeedsRetry` when work remains.
+2. Select `PENDING` rows and `RETRY_WAITING` rows whose retry time has arrived.
+3. Process rows in creation order.
+4. Check dependencies before upload.
+5. Mark the row `IN_PROGRESS`.
+6. Upload to remote.
+7. Mark the row as `SUCCEEDED`, `RETRY_WAITING`, `FAILED`, or `CONFLICT`.
 
-Dependency ordering prevents a payment from uploading before its order and prevents a refund from uploading before both its order and payment.
+Dependency checks are important:
 
-## Handled edge cases
+- Orders can upload directly.
+- Payments wait until their order has synced.
+- Refunds wait until their order and payment have synced.
 
-### Authentication edge cases
+This keeps remote data in a valid order even if the cashier created everything offline.
 
-- Blank phone and blank password are reported separately.
-- Arabic and Persian numerals are accepted and normalized.
-- Whitespace in phone numbers is ignored.
-- Non-digit phone input is rejected.
-- Invalid phone length/prefix is rejected.
-- Wrong phone/password returns invalid credentials without exposing which field was wrong.
-- Login failures from the repository are converted to a generic failure result.
+## What Happens When Upload Fails
 
-### Menu/cart/order edge cases
+The app treats failures differently depending on the reason.
 
-- Empty cart cannot create an order.
-- Quantity `0` or negative quantities are rejected.
-- Removing an item clears it from the cart.
-- Selecting an unknown category falls back to the "all" category.
-- Stale menu items are reloaded from the database before order creation.
-- Deleted menu items are rejected.
-- Inactive menu items are rejected.
-- Changing cart contents, order type, or applied discount clears the existing created order id so payment cannot be applied to stale order data.
+### Retryable Failure
 
-### Money calculation edge cases
+Examples:
 
-- Persisted money uses integer minor units.
-- Percentage calculations use rounded integer math.
-- Discount and tax are allocated proportionally to line items.
-- The last line receives the remaining allocation amount to avoid rounding drift.
-- Discounts cannot reduce taxable amount or totals below zero.
-- Dine-in service is only applied when the order type is `DINE_IN`.
+- No internet.
+- Timeout.
+- Temporary server error.
+- Rate limit.
 
-### Discount edge cases
+The row becomes `RETRY_WAITING`, keeps the error details, increases its retry count, and gets a `next_attempt_at` time. When that time arrives, WorkManager or manual sync can upload it again.
 
-- Missing promo code returns `PromoCodeNotFound`/`DiscountNotFound`.
-- Structurally invalid discounts are rejected in the preview use case.
-- Discounts before `startAt` are rejected.
-- Discounts after `endAt` are rejected.
-- Discounts below the minimum order value are rejected during final order creation.
-- Duplicate promo codes during sync are rejected.
-- Remote discount data that cannot map to valid local discounts is reported.
-- Local storage failure while replacing discounts is reported.
+### Non-Retryable Failure
 
-### Payment edge cases
+Examples:
 
-- Unknown order id fails payment.
-- Orders that are not `PendingPayment` cannot be paid again.
-- Card number must be non-blank and numeric after removing spaces.
-- CVV must be 3 or 4 digits.
-- Expiry month must be between 1 and 12.
-- Two-digit expiry years are normalized to `20xx`.
-- Expiry years before 2026 are rejected.
-- Card holder name is required.
-- Failed card payment attempts preserve the failure reason and card last four digits when possible.
-- Retry after failed/processing card payment reuses the previous payment id.
+- Unauthorized cashier.
+- Invalid payload rejected by remote.
 
-### Printing edge cases
+The row becomes `FAILED`. This is not retried automatically because sending the same payload again will probably fail again until the data or permissions are fixed.
 
-- Missing order/refund details fail printing cleanly.
-- Printer service unavailability is retried.
-- Printer exceptions reset the service binding and retry.
-- Concurrent print jobs are serialized with a mutex.
-- Payment remains successful even if printing fails.
-- Print status is updated to `Failed` when a background print throws.
+### Conflict
 
-### Refund edge cases
+Conflicts become `CONFLICT`. This keeps the row visible for manual handling instead of hiding a data problem.
 
-- Empty refund selection is rejected.
-- Zero or negative refund quantities are rejected.
-- Missing order is rejected.
-- Orders that are unpaid or already fully invalid for refund are rejected.
-- Item ids not belonging to the order are rejected.
-- Quantities greater than remaining refundable quantity are rejected.
-- Pending and processing refunds reserve quantity so duplicate refund requests cannot exceed the original order quantity.
-- Card refunds require the original card transaction id.
-- Failed card refunds mark the refund as failed without marking the order refunded.
+### Duplicate Upload
 
-### Sync edge cases
+If the remote already has the same idempotency key, the app treats it as success. This protects the system from duplicate orders/payments when the app retries after a timeout.
 
-- Empty remote users/items data is reported as empty.
-- Invalid remote documents are skipped and counted.
-- If every remote discount document is invalid, sync returns invalid remote data.
-- Network, timeout, permission, local storage, and unknown errors are mapped to explicit results.
-- Duplicate outbox uploads are treated as success through idempotency keys.
-- Retryable errors are delayed using `SyncRetryPolicy`.
-- Non-retryable errors become `FAILED`.
-- Server conflicts become `CONFLICT`.
-- Stale `IN_PROGRESS` outbox rows are reset.
-- Payment/refund uploads wait until required parent aggregates are synced.
+## Persistence Model
 
-## Sync and offline strategy
+SQLDelight stores:
 
-The app is designed around local-first cashier operations:
-
-- Reference data such as users, menu items, and discounts is synced from remote into SQLDelight.
-- Cashier actions are written locally first.
-- Orders, payments, and refunds create outbox rows in the same local transaction as the business record.
-- Background sync uploads outbox rows later when the network is available.
-- Idempotency keys make repeated uploads safe.
-- Aggregate tables keep their own `synced_at` timestamps so the UI can show synced/unsynced counts.
-
-On Android, `WorkManagerSyncScheduler` enqueues unique work named `sync_outbox` with connected-network constraints and exponential backoff. On iOS, the scheduler is currently a no-op, but manual processing and the shared repository/processor logic are available.
-
-## Persistence model
-
-SQLDelight tables are organized around:
-
-- `users`: locally synced cashier records.
-- `menu_items`: locally synced menu snapshot with active/inactive support.
-- `discounts`: locally synced promo code rules.
-- `orders`: order header, cashier info, totals, statuses, discount snapshot, and sync timestamp.
-- `order_items`: immutable order line snapshot.
+- `users`: synced cashier records.
+- `menu_items`: synced menu snapshot.
+- `discounts`: synced promo code rules.
+- `orders`: order header, totals, statuses, cashier snapshot, and sync timestamp.
+- `order_items`: immutable order item snapshots.
 - `payments`: cash/card payment attempts and gateway metadata.
-- `refunds`: refund header, status, method, amount, and sync timestamp.
-- `refund_items`: prorated refund line details.
-- `sync_outbox`: upload queue with idempotency key, retry metadata, lock timestamp, and last error.
+- `refunds`: refund header, method, amount, status, and sync timestamp.
+- `refund_items`: refund item details.
+- `sync_outbox`: upload queue with idempotency key, retry state, lock time, and last error.
 
-Snapshot sync intentionally marks missing users/menu items inactive rather than deleting them. That preserves historical order integrity while preventing stale users/items from being used for new activity.
+Users and menu items that disappear from the remote snapshot are marked inactive instead of deleted. This keeps old orders readable while preventing inactive records from being used for new actions.
 
-## Platform behavior
+## Platform Behavior
 
 ### Android
 
-- Uses Firebase Firestore SDK for remote data.
-- Uses Android SQLDelight driver.
+- Uses Firebase Firestore SDK.
+- Uses SQLDelight Android driver.
 - Uses AndroidX DataStore Preferences.
-- Uses WorkManager for outbox sync.
+- Uses WorkManager for background outbox upload.
 - Uses SmartPOS AIDL printer service from `data/libs/SmartPos_1.3.6_R201217.jar`.
-- Supports Firebase configuration through `composeApp/google-services.json`.
+- Uses `composeApp/google-services.json` for Firebase configuration.
 
 ### iOS
 
@@ -398,13 +244,11 @@ Snapshot sync intentionally marks missing users/menu items inactive rather than 
 - Uses SQLDelight native driver.
 - Uses shared Compose UI through `ComposeUIViewController`.
 - Uses a fake receipt printer.
-- Automatic background outbox scheduling is currently not implemented.
+- Automatic background scheduling is not implemented yet, but manual/shared sync logic is available.
 
-## Running the project
+## Running The Project
 
-### Android
-
-Build the debug Android app:
+Build the Android debug app:
 
 ```bash
 ./gradlew :composeApp:assembleDebug
@@ -412,15 +256,13 @@ Build the debug Android app:
 
 Or open the project in Android Studio and run the `composeApp` Android target.
 
-### iOS
-
-Open the iOS project in Xcode:
+For iOS, open:
 
 ```text
 iosApp/iosApp.xcodeproj
 ```
 
-Run the iOS app target. The shared UI is rendered from `MainViewController`.
+Then run the iOS app target from Xcode.
 
 ## Testing
 
@@ -440,19 +282,18 @@ Run focused module tests:
 
 Current tests cover:
 
-- Login validation and login use case behavior.
-- Current-user checks and DataStore persistence.
+- Login validation and current-user behavior.
 - User, menu item, and discount sync.
 - Phone/server time validation.
-- Discount application rules.
+- Discount rules.
 - Order creation, payment, refund, and receipt retry use cases.
 - Sync idempotency keys and retry policy.
 - Sync outbox processing.
-- SQLDelight local data source behavior for users, menu items, discounts, orders, and outbox rows.
+- SQLDelight local behavior for users, menu items, discounts, orders, and outbox rows.
 - Home, login, orders, and sync ViewModel behavior.
 - Android WorkManager sync scheduling.
 
-## Project structure
+## Project Structure
 
 ```text
 .
@@ -490,10 +331,3 @@ Current tests cover:
 │       └── iosMain
 └── iosApp
 ```
-
-## Notes for reviewers
-
-- The domain module is the best place to review business correctness because it contains the rules without platform noise.
-- The data module is the best place to review persistence, sync, Firestore mapping, and printer integration.
-- The Compose ViewModels are the best place to review UI state transitions and one-time effects.
-- Order/payment/refund actions are intentionally local-first; remote upload is decoupled through the outbox so cashier work can continue during temporary network problems.

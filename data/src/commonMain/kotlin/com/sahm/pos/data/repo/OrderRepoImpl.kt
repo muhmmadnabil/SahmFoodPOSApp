@@ -71,6 +71,8 @@ class OrderRepoImpl(
     override suspend fun createOrder(order: Order, items: List<OrderItem>) =
         withContext(Dispatchers.IO) {
             database.transaction {
+                // The order and its outbox row are saved together so an offline order is never
+                // created without a matching upload task.
                 database.orderFlowQueries.insertOrder(
                     id = order.id,
                     cashier_id = order.cashierId,
@@ -206,6 +208,8 @@ class OrderRepoImpl(
                 synced_at = payment.syncedAt,
             )
             if (payment.status == PaymentStatus.Paid) {
+                // Only completed payments are uploaded. Failed/processing attempts stay local so
+                // retrying a card payment does not create remote noise or duplicate charges.
                 insertOutboxIfAbsent(
                     type = SyncOutboxType.CREATE_PAYMENT,
                     aggregateType = SyncAggregateType.PAYMENT,
@@ -250,6 +254,8 @@ class OrderRepoImpl(
                     total_refund_amount = item.totalRefundAmount,
                 )
             }
+            // Refunds also go through the outbox because the cashier can complete the local action
+            // before the order/payment upload has reached the server.
             insertOutboxIfAbsent(
                 type = SyncOutboxType.CREATE_REFUND,
                 aggregateType = SyncAggregateType.REFUND,
@@ -448,6 +454,8 @@ class OrderRepoImpl(
     ) {
         val idempotencyKey = createSyncIdempotencyKey(type, aggregateId)
 
+        // The idempotency key is also the row id, and INSERT OR IGNORE makes repeated local saves
+        // safe. A retry should upload the same business action, not create a second outbox task.
         database.syncOutboxQueries.insertOutboxItemOrIgnore(
             id = idempotencyKey, type = type.name,
             aggregate_id = aggregateId,

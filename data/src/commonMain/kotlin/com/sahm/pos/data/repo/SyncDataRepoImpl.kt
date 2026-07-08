@@ -185,6 +185,8 @@ class SyncDataRepoImpl(
     override suspend fun uploadData(item: SyncOutboxItem): SyncUploadResult {
         val result = remoteDataSource.uploadOutboxItem(item)
         if (result == SyncUploadResult.Success || result == SyncUploadResult.DuplicateIdempotencyKey) {
+            // Marking the aggregate synced is separate from marking the outbox row succeeded.
+            // Dependency checks for payments/refunds read these timestamps.
             markAggregateSynced(item)
         }
         return result
@@ -194,11 +196,14 @@ class SyncDataRepoImpl(
         when (item.type) {
             SyncOutboxType.CREATE_ORDER -> true
             SyncOutboxType.CREATE_PAYMENT ->
+                // A payment upload references an order, so the order must exist remotely first.
                 sqlDelightLocalDataSource.getPaymentOrderSyncedAt(item.aggregateId) != null
 
             SyncOutboxType.CREATE_REFUND -> {
                 val dependency = sqlDelightLocalDataSource.getRefundDependencies(item.aggregateId)
                     ?: return false
+                // Refund upload depends on both records because the server needs to link it to the
+                // original order and payment safely.
                 dependency.order_synced_at != null && dependency.payment_synced_at != null
             }
         }
